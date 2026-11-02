@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Corte Fino - Açougue Gourmet</title>
+
+    <!-- BOOTSTRAP CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- FAVICON -->
+    <link rel="shortcut icon" href="/images/icon-Corte-Fino.ico" />
+
+    <!-- ICONES -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css"
+      rel="stylesheet"
+    />
+
+    <!-- FONTE -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- CSS (PADRÃO DO INDEX) -->
+
+    <link rel="stylesheet" href="/CSS/style.css" />
+  </head>
+  <body>
+    <%- include("partials/header", { currentPage: "products" }) %>
+    <!-- HEADER TOP - Informações de contato -->
+
+
+    <!-- SEÇÃO PRODUTOS -->
+    <main class="pagina-produtos">
+      <!-- CABEÇALHO -->
+      <section class="hero-section d-flex align-items-center">
+        <div class="container">
+          <h4 class="border-premium">Produtos</h4>
+          <h2 class="h1 mb-3 text-white fw-bold">Nossos Produtos</h2>
+          <p class="sub-hero col-12 col-md-7">
+            Carnes selecionadas com certificação de qualidade e frescor
+            garantido.
+          </p>
+        </div>
+      </section>
+
+      <!-- BARRA DE BUSCA -->
+      <div class="container-busca mt-5">
+        <span class="icone-busca"></span>
+        <input
+          type="text"
+          class="campo-busca"
+          placeholder="Buscar produtos..."
+          id="busca"
+        />
+      </div>
+
+      <!-- FILTROS -->
+      <div class="botoes-filtro">
+        <button class="botao-filtro ativo" data-categoria="todos">Todos</button>
+        <button class="botao-filtro" data-categoria="bovino">Bovino</button>
+        <button class="botao-filtro" data-categoria="suino">Suíno</button>
+        <button class="botao-filtro" data-categoria="aves">Aves</button>
+        <button class="botao-filtro" data-categoria="kits">
+          Kits Especiais
+        </button>
+      </div>
+
+      <!-- GRID - produtos vindos do banco de dados -->
+      <section class="grid-produtos" id="listaProdutos">
+        <% if (produtos.length == 0) { %>
+        <p>Nenhum produto cadastrado no momento.</p>
+        <% } %>
+
+        <%
+          // imagem padrao de cada tipo (chave = nome da categoria sem acento e minusculo)
+          const imagensPorTipo = {
+            bovino: "/images/Cards-Produtos/picanha-bovina-card.png",
+            suino: "/images/Cards-Produtos/panceta-products.png",
+            ave: "/images/Cards-Produtos/frango-resfriado-products.png",
+            kit: "/images/Cards-Produtos/kit-churrasco-products.png",
+          };
+        %>
+        <% for (let i = 0; i < produtos.length; i++) { %>
+        <%
+          const tipo = String(produtos[i].NOME_CATEGORIA || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
+          const chaveImagem = Object.keys(imagensPorTipo).find((chave) => tipo.startsWith(chave));
+        %>
+        <div
+          class="cartao-produto"
+          data-tipo="<%= tipo %>"
+          data-id="<%= produtos[i].ID_PRODUTO %>"
+          data-preco="<%= produtos[i].PRECO_VENDA %>"
+          data-estoque="<%= produtos[i].QNT_ESTOQUE %>"
+        >
+          <div class="area-img-produto">
+            <img
+              src="<%= imagensPorTipo[chaveImagem] || imagensPorTipo.bovino %>"
+              class="img-produto"
+              alt="<%= produtos[i].NOME_PRODUTO %>"
+            />
+          </div>
+
+          <div class="info-produto">
+            <span class="categoria-produto"><%= produtos[i].NOME_CATEGORIA %></span>
+            <h3 class="nome-produto"><%= produtos[i].NOME_PRODUTO %></h3>
+            <p class="descricao-produto"><%= produtos[i].DESCRICAO %></p>
+
+            <div class="preco-produto">
+              <span class="preco-atual">R$ <%= produtos[i].PRECO_VENDA %></span>
+              <span class="unidade-preco">/kg</span>
+            </div>
+
+            <% if (produtos[i].QNT_ESTOQUE > 0) { %>
+            <button class="btn-adicionar">Adicionar ao Pedido</button>
+            <% } else { %>
+            <button class="btn-adicionar" disabled>Esgotado</button>
+            <% } %>
+          </div>
+        </div>
+        <% } %>
+      </section>
+    </main>
+    <!-- FOOTER -->
+    <%- include("partials/footer", { footerType: "default" }) %>
+    <script src="/JS/scripts/cart.js"></script>
+    <script src="/JS/scripts/products.js" defer></script>
+  </body>
+</html>

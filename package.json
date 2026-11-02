@@ -1,0 +1,29 @@
+{
+  "name": "pi2-corte-fino-",
+  "version": "1.0.0",
+  "description": "Padrão de trabalho em equipe para o repositório [PI-CORTE-FINO-REFAT](https://github.com/GiovaniCavalheri/PI-CORTE-FINO-REFAT).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GiovaniCavalheri/PI2-CORTE-FINO-.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/GiovaniCavalheri/PI2-CORTE-FINO-/issues"
+  },
+  "homepage": "https://github.com/GiovaniCavalheri/PI2-CORTE-FINO-#readme",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "ejs": "^7.0.1",
+    "ejs-layout": "^1.0.15",
+    "express": "^5.3.0",
+    "express-ejs-layouts": "^2.5.1",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.5"
+  }
+}

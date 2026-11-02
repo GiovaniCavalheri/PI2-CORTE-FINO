@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Corte Fino — Painel Admin</title>
+    <link
+      rel="shortcut icon"
+      href="/images/icon-Corte-Fino.ico"
+      type="image/x-icon"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/CSS/pageAdm.css" />
+  </head>
+  <body>
+    <!-- ═══════ SIDEBAR ═══════ -->
+    <aside id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <div class="brand-icon">CF</div>
+          <div class="brand-name">Corte Fino</div>
+        </div>
+        <div class="brand-sub">Painel Administrador</div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-label">Geral</div>
+        <a class="nav-link-cf active" data-section="dashboard">
+          <i class="fa-solid fa-gauge-high"></i> Painel
+        </a>
+
+        <div class="nav-label">Gestão</div>
+        <a class="nav-link-cf" data-section="produtos">
+          <i class="fa-solid fa-box-open"></i> Produtos
+        </a>
+        <a class="nav-link-cf" data-section="cadastros">
+          <i class="fa-solid fa-tags"></i> Categorias e Marcas
+        </a>
+
+        <div class="nav-label">Pessoas</div>
+        <a class="nav-link-cf" data-section="socios">
+          <i class="fa-solid fa-users"></i> Sócios
+        </a>
+        <a class="nav-link-cf" data-section="fornecedores">
+          <i class="fa-solid fa-truck"></i> Fornecedores
+        </a>
+
+        <div class="nav-label">Vendas</div>
+        <a class="nav-link-cf" data-section="pedidos">
+          <i class="fa-solid fa-receipt"></i> Pedidos
+        </a>
+
+        <div class="nav-label">Outros</div>
+        <a class="nav-link-cf" data-section="relatorios">
+          <i class="fa-solid fa-chart-pie"></i> Relatorios
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="/">
+          <i class="fa-solid fa-arrow-left"></i> Voltar ao Site
+        </a>
+      </div>
+    </aside>
+
+    <!-- ═══════ MAIN ═══════ -->
+    <div id="main">
+      <!-- TOPBAR -->
+      <div class="topbar">
+        <div class="topbar-group">
+          <button class="btn-toggle" id="toggleSidebar">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <span class="topbar-title" id="topbarTitle">Painel</span>
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-badge"
+            ><i
+              class="fa-solid fa-circle"
+              class="online-indicator"
+            ></i
+            >Online</span
+          >
+          <div class="avatar">CF</div>
+        </div>
+      </div>
+
+      <!-- ═══════ DASHBOARD ═══════ -->
+      <div class="page-content active" id="section-dashboard">
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-box-open"></i></div>
+            <div>
+              <div class="stat-value" id="totalProdutos"><%= produtos.length %></div>
+              <div class="stat-label">Produtos cadastrados</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-star"></i></div>
+            <div>
+              <div class="stat-value" id="totalCategorias"><%= categorias.length %></div>
+              <div class="stat-label">Categorias cadastradas</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-tag"></i></div>
+            <div>
+              <div class="stat-value" id="totalMarcas"><%= marcas.length %></div>
+              <div class="stat-label">Marcas cadastradas</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+            <div>
+              <div class="stat-value" id="totalSocios">0</div>
+              <div class="stat-label">Sócios cadastrados</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-truck"></i></div>
+            <div>
+              <div class="stat-value" id="totalFornecedores">0</div>
+              <div class="stat-label">Fornecedores cadastrados</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-receipt"></i></div>
+            <div>
+              <div class="stat-value" id="totalPedidosAbertos">0</div>
+              <div class="stat-label">Pedidos em aberto</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="form-card">
+            <div class="section-title section-title-spaced">
+              <i class="fa-solid fa-bolt"></i> Acesso Rápido
+            </div>
+            <button class="quick-btn" onclick="navigateTo('produtos')">
+              <i class="fa-solid fa-plus"></i> Adicionar novo produto
+            </button>
+            <button class="quick-btn" onclick="navigateTo('relatorios')">
+              <i class="fa-solid fa-upload"></i> Enviar relatório
+            </button>
+            <button class="quick-btn" onclick="navigateTo('produtos')">
+              <i class="fa-solid fa-trash-can"></i> Gerenciar / excluir produtos
+            </button>
+            <button class="quick-btn" onclick="navigateTo('socios')">
+              <i class="fa-solid fa-users"></i> Gerenciar sócios
+            </button>
+            <button class="quick-btn" onclick="navigateTo('fornecedores')">
+              <i class="fa-solid fa-truck"></i> Gerenciar fornecedores
+            </button>
+          </div>
+          <div class="form-card">
+            <div class="section-title section-title-spaced">
+              <i class="fa-solid fa-clock"></i> Funcionamento
+            </div>
+            <div class="horario-item">
+              <span>Segunda a Sexta</span>
+              <strong>7h – 19h</strong>
+            </div>
+            <div class="horario-item">
+              <span>Sábado</span>
+              <strong>7h – 18h</strong>
+            </div>
+            <div class="horario-item">
+              <span>Domingo</span>
+              <strong>7h – 13h</strong>
+            </div>
+            <div class="horario-item">
+              <span>Feriados</span>
+              <strong>8h – 12h</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ PRODUTOS ═══════ -->
+      <div class="page-content" id="section-produtos">
+        <!-- FORMULARIO DE PRODUTO -->
+        <div class="section-header">
+          <div class="section-title">
+            <i class="fa-solid fa-plus-circle"></i>
+            <span id="tituloForm">Cadastrar Produto</span>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <!-- guarda o id quando estamos editando um produto -->
+          <input type="hidden" id="idProduto" value="" />
+
+          <div class="form-row cols-2">
+            <div>
+              <label class="form-label">Nome do Produto *</label>
+              <input
+                type="text"
+                id="nomeProduto"
+                placeholder="Ex: Picanha Premium"
+              />
+            </div>
+            <div>
+              <label class="form-label">Categoria *</label>
+              <select id="categoriaProduto">
+                <option value="">Selecione...</option>
+                <% for (let i = 0; i < categorias.length; i++) { %>
+                <option value="<%= categorias[i].id %>">
+                  <%= categorias[i].nomeCategoria %>
+                </option>
+                <% } %>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Marca *</label>
+              <select id="marcaProduto">
+                <option value="">Selecione...</option>
+                <% for (let i = 0; i < marcas.length; i++) { %>
+                <option value="<%= marcas[i].id %>">
+                  <%= marcas[i].nomeMarca %>
+                </option>
+                <% } %>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Preco (R$/kg) *</label>
+              <input type="number" step="0.01" id="precoProduto" placeholder="0.00" />
+            </div>
+            <div>
+              <label class="form-label">Quantidade em estoque *</label>
+              <input type="number" id="estoqueProduto" placeholder="0" />
+            </div>
+          </div>
+
+          <div class="form-row form-row-spaced">
+            <div>
+              <label class="form-label">Descricao</label>
+              <textarea
+                id="descProduto"
+                rows="2"
+                placeholder="Descricao breve..."
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-red" id="btnGravar">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Produto
+            </button>
+            <button class="btn-outline" id="btnLimpar">Limpar</button>
+          </div>
+        </div>
+
+        <!-- TABELA DE PRODUTOS -->
+        <div class="section-header">
+          <div class="section-title">
+            <i class="fa-solid fa-list-ul"></i> Produtos Cadastrados
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <div class="table-toolbar">
+            <div class="table-info">
+              Total: <strong><%= produtos.length %></strong> produto(s)
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Categoria</th>
+                <th>Marca</th>
+                <th>Preco</th>
+                <th>Estoque</th>
+                <th class="table-actions-wide">Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="listaProdutos">
+              <% if (produtos.length == 0) { %>
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <i class="fa-solid fa-box-open"></i>
+                    <p>Nenhum produto cadastrado ainda.</p>
+                  </div>
+                </td>
+              </tr>
+              <% } %>
+
+              <% for (let i = 0; i < produtos.length; i++) { %>
+              <tr>
+                <td><%= produtos[i].NOME_PRODUTO %></td>
+                <td><%= produtos[i].NOME_CATEGORIA %></td>
+                <td><%= produtos[i].NOME_MARCA %></td>
+                <td>R$ <%= produtos[i].PRECO_VENDA %></td>
+                <td><%= produtos[i].QNT_ESTOQUE %></td>
+                <td>
+                  <button
+                    class="btn-outline btnEditar"
+                    data-id="<%= produtos[i].ID_PRODUTO %>"
+                    data-nome="<%= produtos[i].NOME_PRODUTO %>"
+                    data-categoria="<%= produtos[i].ID_CATEGORIA %>"
+                    data-marca="<%= produtos[i].ID_MARCA %>"
+                    data-preco="<%= produtos[i].PRECO_VENDA %>"
+                    data-estoque="<%= produtos[i].QNT_ESTOQUE %>"
+                    data-descricao="<%= produtos[i].DESCRICAO %>"
+                  >
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button
+                    class="btn-danger btnExcluir"
+                    data-id="<%= produtos[i].ID_PRODUTO %>"
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ======= CADASTROS (CATEGORIAS E MARCAS) ======= -->
+      <div class="page-content" id="section-cadastros">
+        <div class="section-header">
+          <div class="section-title">
+            <i class="fa-solid fa-tags"></i> Categorias
+          </div>
+        </div>
+
+        <div class="form-card">
+          <input type="hidden" id="idCategoria" value="" />
+          <div class="form-row cols-2">
+            <div>
+              <label class="form-label">Nome da Categoria *</label>
+              <input type="text" id="nomeCategoria" placeholder="Ex: Bovino" />
+            </div>
+            <div>
+              <label class="form-label">Descricao</label>
+              <input
+                type="text"
+                id="descCategoria"
+                placeholder="Descricao breve..."
+              />
+            </div>
+          </div>
+          <div class="form-actions-compact">
+            <button class="btn-red" id="btnGravarCategoria">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Categoria
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Descricao</th>
+                <th class="table-actions">Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="listaCategorias">
+              <% if (categorias.length == 0) { %>
+              <tr>
+                <td colspan="3">
+                  <div class="empty-state">
+                    <p>Nenhuma categoria cadastrada ainda.</p>
+                  </div>
+                </td>
+              </tr>
+              <% } %>
+
+              <% for (let i = 0; i < categorias.length; i++) { %>
+              <tr>
+                <td><%= categorias[i].nomeCategoria %></td>
+                <td><%= categorias[i].descricao %></td>
+                <td>
+                  <button
+                    class="btn-outline btnEditarCategoria"
+                    data-id="<%= categorias[i].id %>"
+                    data-nome="<%= categorias[i].nomeCategoria %>"
+                    data-descricao="<%= categorias[i].descricao %>"
+                  >
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button
+                    class="btn-danger btnExcluirCategoria"
+                    data-id="<%= categorias[i].id %>"
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section-header section-header-separated">
+          <div class="section-title">
+            <i class="fa-solid fa-copyright"></i> Marcas
+          </div>
+        </div>
+
+        <div class="form-card">
+          <input type="hidden" id="idMarca" value="" />
+          <div class="form-row">
+            <div>
+              <label class="form-label">Nome da Marca *</label>
+              <input type="text" id="nomeMarca" placeholder="Ex: Friboi" />
+            </div>
+          </div>
+          <div class="form-actions-compact">
+            <button class="btn-red" id="btnGravarMarca">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Marca
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Marca</th>
+                <th class="table-actions">Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="listaMarcas">
+              <% if (marcas.length == 0) { %>
+              <tr>
+                <td colspan="2">
+                  <div class="empty-state">
+                    <p>Nenhuma marca cadastrada ainda.</p>
+                  </div>
+                </td>
+              </tr>
+              <% } %>
+
+              <% for (let i = 0; i < marcas.length; i++) { %>
+              <tr>
+                <td><%= marcas[i].nomeMarca %></td>
+                <td>
+                  <button
+                    class="btn-outline btnEditarMarca"
+                    data-id="<%= marcas[i].id %>"
+                    data-nome="<%= marcas[i].nomeMarca %>"
+                  >
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button
+                    class="btn-danger btnExcluirMarca"
+                    data-id="<%= marcas[i].id %>"
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════ SÓCIOS ═══════ -->
+      <div class="page-content" id="section-socios">
+        <div class="section-header">
+          <div class="section-title">
+            <i class="fa-solid fa-user-plus"></i>
+            <span id="tituloFormSocio">Cadastrar Sócio</span>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <!-- guarda o id (ID_CLIENTE = ID_SOCIO) quando estamos editando -->
+          <input type="hidden" id="idSocio" value="" />
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Nome completo *</label>
+              <input type="text" id="socioNome" placeholder="Ex: João da Silva" />
+            </div>
+            <div>
+              <label class="form-label">Data de nascimento *</label>
+              <input type="date" id="socioNascimento" />
+            </div>
+            <div>
+              <label class="form-label">E-mail *</label>
+              <input type="email" id="socioEmail" placeholder="email@exemplo.com" />
+            </div>
+          </div>
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">CPF *</label>
+              <input type="text" id="socioCpf" maxlength="14" placeholder="000.000.000-00" />
+            </div>
+            <div>
+              <label class="form-label">RG</label>
+              <input type="text" id="socioRg" maxlength="12" placeholder="00.000.000-0" />
+            </div>
+            <div>
+              <label class="form-label">Celular *</label>
+              <input type="text" id="socioCelular" maxlength="14" placeholder="(99)99999-9999" />
+            </div>
+          </div>
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Telefone</label>
+              <input type="text" id="socioTelefone" maxlength="14" placeholder="(99)9999-9999" />
+            </div>
+            <div>
+              <label class="form-label">CEP</label>
+              <input type="text" id="socioCep" maxlength="9" placeholder="00000-000" />
+            </div>
+            <div>
+              <label class="form-label">Cidade</label>
+              <input type="text" id="socioCidade" />
+            </div>
+          </div>
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Estado (UF)</label>
+              <input type="text" id="socioEstado" maxlength="2" placeholder="SP" />
+            </div>
+            <div>
+              <label class="form-label">Bairro</label>
+              <input type="text" id="socioBairro" />
+            </div>
+            <div>
+              <label class="form-label">Número</label>
+              <input type="text" id="socioNumero" maxlength="10" />
+            </div>
+          </div>
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Complemento</label>
+              <input type="text" id="socioComplemento" maxlength="100" />
+            </div>
+            <div>
+              <label class="form-label">Data de adesão *</label>
+              <input type="date" id="socioAdesao" />
+            </div>
+            <div>
+              <label class="form-label">Data de vencimento *</label>
+              <input type="date" id="socioVencimento" />
+            </div>
+          </div>
+
+          <div class="form-row cols-3 form-row-spaced" id="grupoSenhaSocio">
+            <div>
+              <label class="form-label">Senha * (só no cadastro)</label>
+              <input type="text" id="socioSenha" placeholder="Senha de acesso" />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-red" id="btnGravarSocio">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Sócio
+            </button>
+            <button class="btn-outline" id="btnLimparSocio">Limpar</button>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <div class="section-title">
+            <i class="fa-solid fa-list-ul"></i> Sócios Cadastrados
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>CPF</th>
+                <th>E-mail</th>
+                <th>Celular</th>
+                <th>Cidade/UF</th>
+                <th>Vencimento</th>
+                <th class="table-actions-wide">Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="listaSocios"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════ FORNECEDORES ═══════ -->
+      <div class="page-content" id="section-fornecedores">
+        <div class="section-header">
+          <div class="section-title">
+            <i class="fa-solid fa-truck"></i>
+            <span id="tituloFormFornecedor">Cadastrar Fornecedor</span>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <input type="hidden" id="idFornecedor" value="" />
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Razão Social *</label>
+              <input type="text" id="fornRazao" />
+            </div>
+            <div>
+              <label class="form-label">Nome Fantasia</label>
+              <input type="text" id="fornFantasia" />
+            </div>
+            <div>
+              <label class="form-label">CNPJ *</label>
+              <input type="text" id="fornCnpj" maxlength="18" placeholder="00.000.000/0000-00" />
+            </div>
+          </div>
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Nome do responsável</label>
+              <input type="text" id="fornResponsavel" />
+            </div>
+            <div>
+              <label class="form-label">CPF do responsável</label>
+              <input type="text" id="fornCpfResponsavel" maxlength="14" placeholder="000.000.000-00" />
+            </div>
+            <div>
+              <label class="form-label">E-mail *</label>
+              <input type="email" id="fornEmail" placeholder="email@exemplo.com" />
+            </div>
+          </div>
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Telefone comercial</label>
+              <input type="text" id="fornTelefone" maxlength="14" placeholder="(99)9999-9999" />
+            </div>
+            <div>
+              <label class="form-label">Celular *</label>
+              <input type="text" id="fornCelular" maxlength="14" placeholder="(99)99999-9999" />
+            </div>
+            <div>
+              <label class="form-label">CEP</label>
+              <input type="text" id="fornCep" maxlength="9" placeholder="00000-000" />
+            </div>
+          </div>
+
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Cidade</label>
+              <input type="text" id="fornCidade" />
+            </div>
+            <div>
+              <label class="form-label">Estado (UF)</label>
+              <input type="text" id="fornEstado" maxlength="2" placeholder="SP" />
+            </div>
+            <div>
+              <label class="form-label">Bairro</label>
+              <input type="text" id="fornBairro" />
+            </div>
+          </div>
+
+          <div class="form-row cols-3 form-row-spaced">
+            <div>
+              <label class="form-label">Número</label>
+              <input type="text" id="fornNumero" maxlength="10" />
+            </div>
+            <div>
+              <label class="form-label">Forma de pagamento *</label>
+              <select id="fornPagamento">
+                <option value="">Selecione...</option>
+                <option value="debcred">Cartão Débito/Crédito</option>
+                <option value="ted">Transferência TED</option>
+                <option value="pix">PIX</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+            <div id="grupoSenhaFornecedor">
+              <label class="form-label">Senha * (só no cadastro)</label>
+              <input type="text" id="fornSenha" placeholder="Senha de acesso" />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-red" id="btnGravarFornecedor">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Fornecedor
+            </button>
+            <button class="btn-outline" id="btnLimparFornecedor">Limpar</button>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <div class="section-title">
+            <i class="fa-solid fa-list-ul"></i> Fornecedores Cadastrados
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Razão Social</th>
+                <th>Nome Fantasia</th>
+                <th>CNPJ</th>
+                <th>Responsável</th>
+                <th>Telefone</th>
+                <th>Pagamento</th>
+                <th class="table-actions-wide">Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="listaFornecedores"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════ PEDIDOS ═══════ -->
+      <div class="page-content" id="section-pedidos">
+        <div class="form-card">
+          <div class="section-title section-title-spaced">
+            <i class="fa-solid fa-filter"></i> Filtrar Pedidos
+          </div>
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Sócio</label>
+              <select id="filtroPedidoSocio">
+                <option value="">Todos os sócios</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Situação</label>
+              <select id="filtroPedidoStatus">
+                <option value="abertos">Em aberto</option>
+                <option value="">Todos</option>
+                <option value="Entregue">Entregues</option>
+                <option value="Cancelado">Cancelados</option>
+              </select>
+            </div>
+          </div>
+          <p class="pedidos-ajuda">
+            Pedido em aberto é todo pedido que não está Entregue nem Cancelado.
+            Sócio com pedido em aberto não pode ser excluído. Ao cancelar, as
+            quantidades voltam para o estoque.
+          </p>
+        </div>
+
+        <div class="section-header">
+          <div class="section-title">
+            <i class="fa-solid fa-list-ul"></i> Pedidos dos Sócios
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nº</th>
+                <th>Data</th>
+                <th>Sócio</th>
+                <th>Itens</th>
+                <th>Valor</th>
+                <th>Tipo</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="listaPedidos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════ RELATÓRIOS ═══════ -->
+      <div class="page-content" id="section-relatorios">
+        <div class="section-header">
+          <div class="section-title">
+            <i class="fa-solid fa-chart-pie"></i> Relatórios
+          </div>
+          <label class="btn-red report-upload-label" for="uploadRelatorio">
+            <i class="fa-solid fa-upload"></i> Enviar Relatório
+            <input
+              type="file"
+              id="uploadRelatorio"
+              accept="image/*"
+              class="report-file-input"
+            />
+          </label>
+        </div>
+
+        <div class="report-grid" id="reportGrid">
+          <div class="report-card">
+            <div class="report-img">
+              <i class="fa-solid fa-chart-bar"></i><span>Jan 2025</span>
+            </div>
+            <div class="report-body">
+              <h6>Vendas — Janeiro 2025</h6>
+              <p>Relatório mensal por categoria</p>
+            </div>
+          </div>
+          <div class="report-card">
+            <div class="report-img">
+              <i class="fa-solid fa-chart-line"></i><span>Fev 2025</span>
+            </div>
+            <div class="report-body">
+              <h6>Estoque — Fevereiro 2025</h6>
+              <p>Controle e movimentação</p>
+            </div>
+          </div>
+          <div class="report-card">
+            <div class="report-img">
+              <i class="fa-solid fa-chart-pie"></i><span>Q1 2025</span>
+            </div>
+            <div class="report-body">
+              <h6>Desempenho — Q1 2025</h6>
+              <p>Análise trimestral de resultados</p>
+            </div>
+          </div>
+          <div class="report-card">
+            <div class="report-img">
+              <i class="fa-solid fa-users"></i><span>Mar 2025</span>
+            </div>
+            <div class="report-body">
+              <h6>Clientes — Março 2025</h6>
+              <p>Base de clientes e pedidos</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- /main -->
+
+    <script src="/JS/scripts/pageAdm.js"></script>
+  </body>
+</html>
