@@ -4,6 +4,7 @@ const Database = require("../database/database");
 const STATUS_INICIAL = "Aguardando Separação";
 
 //TIPO_PEDIDO e um enum ('Bovino','Suino','Ave','Kit'): converte o nome da categoria
+
 function tipoDaCategoria(nomeCategoria) {
   const nome = String(nomeCategoria || "")
     .normalize("NFD")
