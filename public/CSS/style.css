@@ -805,15 +805,39 @@
 }
 
 .campo-senha {
-  padding-right: 40px;
+  position: relative;
+}
+
+.campo-senha .form-control {
+  padding-right: 42px;
 }
 
 .icone-olho {
   position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 14px;
+  top: 0;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  z-index: 3;
+  color: #6c757d;
   cursor: pointer;
+  font-size: 1.05rem;
+  transition: color 0.2s ease;
+}
+
+.campo-senha .form-control.is-invalid + .icone-olho,
+.campo-senha .form-control.is-valid + .icone-olho {
+  right: 40px;
+}
+
+.campo-senha .form-control.is-invalid,
+.campo-senha .form-control.is-valid {
+  padding-right: 68px;
+}
+
+.icone-olho:hover {
+  color: #212529;
 }
 
 /* ================= CONTATO (ISOLADO) ================= */

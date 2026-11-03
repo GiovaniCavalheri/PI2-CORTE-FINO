@@ -57,16 +57,16 @@ document.addEventListener("DOMContentLoaded", function () {
       });
   }
 
-  let inputSenha = document.querySelector("#senha");
-  let olho = document.querySelector("#olho");
-
+document.querySelectorAll(".icone-olho").forEach(function (olho) {
   olho.addEventListener("click", function () {
-    let estaOculta = inputSenha.type === "password";
+    let input = document.getElementById(olho.dataset.alvo);
+    let estaOculta = input.type === "password";
 
-    inputSenha.type = estaOculta ? "text" : "password";
+    input.type = estaOculta ? "text" : "password";
     olho.classList.toggle("bi-eye", !estaOculta);
     olho.classList.toggle("bi-eye-slash", estaOculta);
   });
+});
 
   //?voltar=/cart: volta para a pagina de onde veio
   function paginaDeDestino() {

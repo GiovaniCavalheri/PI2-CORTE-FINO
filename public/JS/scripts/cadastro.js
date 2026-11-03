@@ -502,7 +502,9 @@ async function validarCadastro(event, tipoForm) {
 
 async function enviarCadastro(tipoForm) {
   const botao = document.querySelector(
-    tipoForm === "socio" ? "#formSocio button[type='submit']" : "#formFornecedor button[type='submit']",
+    tipoForm === "socio"
+      ? "#formSocio button[type='submit']"
+      : "#formFornecedor button[type='submit']",
   );
   botao.disabled = true;
 
@@ -563,9 +565,7 @@ async function enviarCadastro(tipoForm) {
         cnpjFornecedor: document.querySelector("#CNPJ").value.trim(),
         nomeFornecedor: document.querySelector("#razaosocial").value.trim(),
         nomeFantasia: document.querySelector("#fantasyname").value.trim(),
-        nomeResponsavel: document
-          .querySelector("#nameFornecedor")
-          .value.trim(),
+        nomeResponsavel: document.querySelector("#nameFornecedor").value.trim(),
         cpfResponsavel: document.querySelector("#CPFFornecedor").value.trim(),
         emailFornecedor: document
           .querySelector("#emailFornecedor")
@@ -591,7 +591,9 @@ async function enviarCadastro(tipoForm) {
 
     mostrarSucesso();
   } catch (erro) {
-    alert(erro.message || "Não foi possível concluir o cadastro. Tente novamente.");
+    alert(
+      erro.message || "Não foi possível concluir o cadastro. Tente novamente.",
+    );
   } finally {
     botao.disabled = false;
   }
@@ -619,7 +621,8 @@ async function enviarJson(url, dados) {
 
 function mostrarSucesso() {
   let div = document.createElement("div");
-  div.textContent = "✓ Cadastro realizado com sucesso! Redirecionando para o login...";
+  div.textContent =
+    "✓ Cadastro realizado com sucesso! Redirecionando para o login...";
   div.style.cssText = `
     position: fixed;
     top: 30px;
@@ -643,10 +646,9 @@ function mostrarSucesso() {
   }, 2500);
 }
 
-
 async function buscarCEP(idCEP, idCidade, idEstado, idBairro) {
   let inputCEP = document.querySelector("#" + idCEP);
-  let cep = inputCEP.value.replace(/\D/g, ""); 
+  let cep = inputCEP.value.replace(/\D/g, "");
 
   if (cep.length !== 8) return;
 
@@ -660,13 +662,35 @@ async function buscarCEP(idCEP, idCidade, idEstado, idBairro) {
     }
 
     document.querySelector("#" + idCidade).value = data.localidade;
-    document.querySelector("#" + idEstado).value  = data.uf;
-    document.querySelector("#" + idBairro).value  = data.bairro;
+    document.querySelector("#" + idEstado).value = data.uf;
+    document.querySelector("#" + idBairro).value = data.bairro;
 
     // Marca o CEP como válido
     marcarValido(inputCEP);
-
   } catch (erro) {
     marcarErro(inputCEP, "Erro ao buscar o CEP. Tente novamente.");
   }
 }
+
+document.querySelectorAll(".icone-olho").forEach(function (olho) {
+  olho.addEventListener("click", function () {
+    let input = document.getElementById(olho.dataset.alvo);
+    if (!input) return;
+
+    let estaOculta = input.type === "password";
+    input.type = estaOculta ? "text" : "password";
+    olho.classList.toggle("bi-eye", !estaOculta);
+    olho.classList.toggle("bi-eye-slash", estaOculta);
+    olho.setAttribute(
+      "aria-label",
+      estaOculta ? "Ocultar senha" : "Mostrar senha",
+    );
+  });
+
+  olho.addEventListener("keydown", function (evento) {
+    if (evento.key === "Enter" || evento.key === " ") {
+      evento.preventDefault();
+      olho.click();
+    }
+  });
+});
