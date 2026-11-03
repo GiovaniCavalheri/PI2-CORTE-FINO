@@ -52,40 +52,42 @@
             Entre com suas credenciais para acessar sua conta
           </p>
 
-          <!-- FORM -->
-          <form class="form-login text-start">
-            <label for="email" class="form-label">E-mail</label>
+<!-- FORM -->
+<form class="form-login text-start">
+  <label for="email" class="form-label">E-mail</label>
 
-            <input
-              type="email"
-              id="email"
-              placeholder="seu@email.com"
-              class="form-control mb-3"
-              required
-            />
+  <input
+    type="email"
+    id="email"
+    placeholder="seu@email.com"
+    class="form-control mb-3"
+    required
+  />
 
-            <div
-              class="linha-input d-flex justify-content-between align-items-center"
-            >
-              <label for="senha" class="form-label mb-0">Senha</label>
-              <a href="#" class="link-esqueci text-decoration-none"
-                >Esqueceu a senha?</a
-              >
-            </div>
+  <div
+    class="linha-input d-flex justify-content-between align-items-center"
+  >
+    <label for="senha" class="form-label mb-0">Senha</label>
+    <a href="#" class="link-esqueci text-decoration-none"
+      >Esqueceu a senha?</a
+    >
+  </div>
 
-            <input
-              type="password"
-              id="senha"
-              placeholder="********"
-              class="form-control mb-3"
-              required
-            />
-            <i class="bi bi-eye"></i>
+  <div class="position-relative mb-3">
+    <input
+      type="password"
+      id="senha"
+      placeholder="********"
+      class="form-control campo-senha"
+      required
+    />
+    <i class="bi bi-eye icone-olho" id="olho"></i>
+  </div>
 
-            <button type="submit" class="btn-login btn w-100 mt-2">
-              Entrar
-            </button>
-          </form>
+  <button type="submit" class="btn-login btn w-100 mt-2">
+    Entrar
+  </button>
+</form>
 
           <p class="texto-cadastro mt-3">
             Não tem uma conta?
