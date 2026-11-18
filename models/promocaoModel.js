@@ -45,25 +45,31 @@ class Promocao {
     this.#dataFim = valor;
   }
 
-    get precoPromocional() {
-      return this.#precoPromocional
-    }
-    set precoPromocional(value){
-      this.#precoPromocional = value
-    }
+  get precoPromocional() {
+    return this.#precoPromocional;
+  }
+  set precoPromocional(value) {
+    this.#precoPromocional = value;
+  }
 
-    get ativa(){
-      return this.#ativa
-    }
+  get ativa() {
+    return this.#ativa;
+  }
 
-    set ativa(value) {
-      this.#ativa = value
-    }
+  set ativa(value) {
+    this.#ativa = value;
+  }
 
   async cadastrar() {
     let sql =
       "insert into PROMOCAO (DESCONTO_PORC, DATA_INICIO, DATA_FIM, PRECO_PROMOCIONAL, ATIVA) values (?,?,?,?,?)";
-    let valores = [this.#descontoPorc, this.#dataInicio, this.#dataFim, this.#precoPromocional, this.#ativa];
+    let valores = [
+      this.#descontoPorc,
+      this.#dataInicio,
+      this.#dataFim,
+      this.#precoPromocional,
+      this.#ativa,
+    ];
 
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
@@ -95,8 +101,8 @@ class Promocao {
         linha["DESCONTO_PORC"],
         linha["DATA_INICIO"],
         linha["DATA_FIM"],
-        linha["PRECO_PROMOCIONAL"], 
-        linha["ATIVA"]
+        linha["PRECO_PROMOCIONAL"],
+        linha["ATIVA"],
       );
 
       lista.push(promocao);
@@ -106,11 +112,13 @@ class Promocao {
 
   async alterar() {
     let sql =
-      "update PROMOCAO set DESCONTO_PORC = ?, DATA_INICIO = ?, DATA_FIM = ? where ID_PROMOCAO = ?";
+      "update PROMOCAO set DESCONTO_PORC = ?, DATA_INICIO = ?, DATA_FIM = ?, PRECO_PROMOCIONAL = ?, ATIVA = ? where ID_PROMOCAO = ?";
     let valores = [
       this.#descontoPorc,
       this.#dataInicio,
       this.#dataFim,
+      this.#precoPromocional,
+      this.#ativa,
       this.#id,
     ];
 
