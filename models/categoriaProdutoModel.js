@@ -1,4 +1,5 @@
 const Database = require("../database/database");
+const { textoPreenchido, idValido } = require("./validacao");
 
 class CategoriasProduto {
   #id;
@@ -32,7 +33,25 @@ class CategoriasProduto {
     this.#descricao = valor;
   }
 
+  //regras da categoria: nome obrigatorio; descricao opcional (vazia = "").
+  //Devolve o texto do erro ou null
+  validar() {
+    if (!textoPreenchido(this.#nomeCategoria)) {
+      return "Informe o nome da categoria.";
+    }
+    this.#nomeCategoria = this.#nomeCategoria.trim();
+    this.#descricao =
+      typeof this.#descricao == "string" ? this.#descricao.trim() : "";
+    return null;
+  }
+
+  //devolve { ok } ou { ok: false, erro }
   async cadastrar() {
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "insert into CATEGORIAS_PRODUTO (NOME_CATEGORIA, DESCRICAO) values (?,?)";
     let valores = [this.#nomeCategoria, this.#descricao];
@@ -40,17 +59,29 @@ class CategoriasProduto {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
+  //a categoria nao pode ser excluida se tiver produtos vinculados.
+  //Devolve { ok } ou { ok: false, erro }
   async excluir(id) {
+    if (!idValido(id)) {
+      return { ok: false, erro: "Categoria inválida." };
+    }
+    if (await this.possuiProdutos(id)) {
+      return {
+        ok: false,
+        erro: "Esta categoria possui produtos vinculados e não pode ser excluída.",
+      };
+    }
+
     let sql = "delete from CATEGORIAS_PRODUTO where ID_CATEGORIA = ?";
     let valores = [id];
 
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
   //usado antes de excluir: a categoria nao pode ter produtos vinculados
@@ -84,7 +115,16 @@ class CategoriasProduto {
     return lista;
   }
 
+  //devolve { ok } ou { ok: false, erro }
   async alterar() {
+    if (!idValido(this.#id)) {
+      return { ok: false, erro: "Categoria inválida." };
+    }
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "update CATEGORIAS_PRODUTO set NOME_CATEGORIA = ?, DESCRICAO = ? where ID_CATEGORIA = ?";
     let valores = [this.#nomeCategoria, this.#descricao, this.#id];
@@ -92,10 +132,15 @@ class CategoriasProduto {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
+  //devolve a categoria, ou null se o id for invalido ou nao existir
   async buscarPorId(id) {
+    if (!idValido(id)) {
+      return null;
+    }
+
     let sql = "SELECT * FROM CATEGORIAS_PRODUTO WHERE ID_CATEGORIA = ?";
     let valores = [id];
 

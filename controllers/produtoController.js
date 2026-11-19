@@ -2,50 +2,17 @@ const Produtos = require("../models/produtosModel");
 const CategoriasProduto = require("../models/categoriaProdutoModel");
 const Marca = require("../models/marcaModel");
 
-//confere os campos do formulario e monta o produto.
-//devolve null se algum campo estiver errado
-function montarProduto(id, body) {
-  let categoria = Number(body.categoria);
-  let marca = Number(body.marca);
-  let preco = Number(body.preco);
-  let estoque = Number(body.estoque);
-
-  //nome obrigatorio
-  if (typeof body.nome != "string" || body.nome.trim() == "") {
-    return null;
-  }
-  //categoria e marca: id inteiro maior que zero
-  if (!Number.isInteger(categoria) || categoria <= 0) {
-    return null;
-  }
-  if (!Number.isInteger(marca) || marca <= 0) {
-    return null;
-  }
-  //preco: numero maior ou igual a zero
-  if (body.preco === "" || !Number.isFinite(preco) || preco < 0) {
-    return null;
-  }
-  //estoque: inteiro maior ou igual a zero
-  if (body.estoque === "" || !Number.isInteger(estoque) || estoque < 0) {
-    return null;
-  }
-  //descricao e opcional, mas se vier tem que ser texto
-  let descricao = "";
-  if (body.descricao !== undefined) {
-    if (typeof body.descricao != "string") {
-      return null;
-    }
-    descricao = body.descricao.trim();
-  }
-
+//o controller so le a requisicao e devolve a resposta:
+//as regras de validacao ficam no model (Produtos.validar)
+function produtoDoFormulario(id, body) {
   return new Produtos(
     id,
-    categoria,
-    marca,
-    body.nome.trim(),
-    descricao,
-    preco,
-    estoque,
+    body.categoria,
+    body.marca,
+    body.nome,
+    body.descricao,
+    body.preco,
+    body.estoque,
   );
 }
 
@@ -56,14 +23,8 @@ class ProdutoController {
   }
 
   async buscar(req, res) {
-    let id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0) {
-      res.send({ ok: false, erro: "ID inválido." });
-      return;
-    }
-
     //o model ja devolve um objeto comum (linha do banco com o JOIN)
-    let produto = await new Produtos().buscarPorId(id);
+    let produto = await new Produtos().buscarPorId(req.params.id);
     if (produto == null) {
       res.send({ ok: false, erro: "Produto não encontrado." });
     } else {
@@ -89,53 +50,18 @@ class ProdutoController {
   }
 
   async cadastrar(req, res) {
-    let produto = montarProduto(0, req.body);
-    if (produto != null) {
-      let okRetornoBanco = await produto.cadastrar();
-      res.send({ ok: okRetornoBanco });
-    } else {
-      res.send({ ok: false });
-    }
+    let produto = produtoDoFormulario(0, req.body);
+    res.send(await produto.cadastrar());
   }
 
   async alterar(req, res) {
-    let id = req.body.id;
-    let produto = montarProduto(id, req.body);
-    if (id && id > 0 && produto != null) {
-      let okRetornoBanco = await produto.alterar();
-      res.send({ ok: okRetornoBanco });
-    } else {
-      res.send({ ok: false });
-    }
+    let produto = produtoDoFormulario(req.body.id, req.body);
+    res.send(await produto.alterar());
   }
 
   //exclusao via fetch
   async excluir(req, res) {
-    let idExclusao = req.params.id;
-    if (idExclusao && idExclusao > 0) {
-      let produto = new Produtos();
-      if (await produto.possuiPedidos(idExclusao)) {
-        res.send({
-          ok: false,
-          erro: "Este produto está em pedidos e não pode ser excluído.",
-        });
-      } else if (await produto.possuiLotes(idExclusao)) {
-        res.send({
-          ok: false,
-          erro: "Este produto possui lotes no estoque e não pode ser excluído.",
-        });
-      } else if (await produto.possuiPromocoes(idExclusao)) {
-        res.send({
-          ok: false,
-          erro: "Este produto está em uma promoção e não pode ser excluído.",
-        });
-      } else {
-        let result = await produto.excluir(idExclusao);
-        res.send({ ok: result });
-      }
-    } else {
-      res.send({ ok: false });
-    }
+    res.send(await new Produtos().excluir(req.params.id));
   }
 }
 

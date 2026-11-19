@@ -1,5 +1,7 @@
 const CategoriasProduto = require("../models/categoriaProdutoModel");
 
+//o controller so le a requisicao e devolve a resposta:
+//as regras de validacao ficam no model (CategoriasProduto.validar)
 class CategoriaController {
   async listar(req, res) {
     let categorias = await new CategoriasProduto().listar();
@@ -17,13 +19,7 @@ class CategoriaController {
   }
 
   async buscar(req, res) {
-    let id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0) {
-      res.send({ ok: false, erro: "ID inválido." });
-      return;
-    }
-
-    let categoria = await new CategoriasProduto().buscarPorId(id);
+    let categoria = await new CategoriasProduto().buscarPorId(req.params.id);
     if (categoria == null) {
       res.send({ ok: false, erro: "Categoria não encontrada." });
     } else {
@@ -40,61 +36,21 @@ class CategoriaController {
   }
 
   async cadastrar(req, res) {
-    let nome = req.body.nome;
-    let descricao = req.body.descricao;
-
-    if (typeof nome == "string" && nome.trim() != "") {
-      if (typeof descricao == "string") {
-        descricao = descricao.trim();
-      } else {
-        descricao = "";
-      }
-
-      let categoria = new CategoriasProduto(0, nome.trim(), descricao);
-      let okRetornoBanco = await categoria.cadastrar();
-      res.send({ ok: okRetornoBanco });
-    } else {
-      res.send({ ok: false });
-    }
+    let categoria = new CategoriasProduto(0, req.body.nome, req.body.descricao);
+    res.send(await categoria.cadastrar());
   }
 
   async alterar(req, res) {
-    let id = req.body.id;
-    let nome = req.body.nome;
-    let descricao = req.body.descricao;
-
-    if (id && id > 0 && typeof nome == "string" && nome.trim() != "") {
-      if (typeof descricao == "string") {
-        descricao = descricao.trim();
-      } else {
-        descricao = "";
-      }
-
-      let categoria = new CategoriasProduto(id, nome.trim(), descricao);
-      let okRetornoBanco = await categoria.alterar();
-      res.send({ ok: okRetornoBanco });
-    } else {
-      res.send({ ok: false });
-    }
+    let categoria = new CategoriasProduto(
+      req.body.id,
+      req.body.nome,
+      req.body.descricao,
+    );
+    res.send(await categoria.alterar());
   }
 
   async excluir(req, res) {
-    let idExclusao = req.params.id;
-    if (idExclusao && idExclusao > 0) {
-      let categoria = new CategoriasProduto();
-      let temProdutos = await categoria.possuiProdutos(idExclusao);
-      if (temProdutos) {
-        res.send({
-          ok: false,
-          erro: "Esta categoria possui produtos vinculados e não pode ser excluída.",
-        });
-      } else {
-        let result = await categoria.excluir(idExclusao);
-        res.send({ ok: result });
-      }
-    } else {
-      res.send({ ok: false });
-    }
+    res.send(await new CategoriasProduto().excluir(req.params.id));
   }
 }
 

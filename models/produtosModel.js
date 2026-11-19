@@ -1,5 +1,6 @@
 const Database = require("../database/database");
 const Promocao = require("./promocaoModel");
+const { textoPreenchido, idValido } = require("./validacao");
 
 class Produtos {
   #id;
@@ -77,7 +78,46 @@ class Produtos {
     this.#qntEstoque = valor;
   }
 
+  //regras do produto: nome, categoria e marca obrigatorios, preco >= 0,
+  //estoque inteiro >= 0, descricao opcional. Devolve o texto do erro ou null
+  validar() {
+    if (!textoPreenchido(this.#nomeProduto)) {
+      return "Informe o nome do produto.";
+    }
+    if (!idValido(this.#idCategoria)) {
+      return "Selecione a categoria.";
+    }
+    if (!idValido(this.#idMarca)) {
+      return "Selecione a marca.";
+    }
+    let preco = Number(this.#precoVenda);
+    if (this.#precoVenda === "" || this.#precoVenda == null || !Number.isFinite(preco) || preco < 0) {
+      return "O preço tem que ser um número maior ou igual a zero.";
+    }
+    let estoque = Number(this.#qntEstoque);
+    if (this.#qntEstoque === "" || this.#qntEstoque == null || !Number.isInteger(estoque) || estoque < 0) {
+      return "O estoque tem que ser um número inteiro maior ou igual a zero.";
+    }
+    if (this.#descricaoProduto != null && typeof this.#descricaoProduto != "string") {
+      return "Descrição inválida.";
+    }
+
+    this.#nomeProduto = this.#nomeProduto.trim();
+    this.#idCategoria = Number(this.#idCategoria);
+    this.#idMarca = Number(this.#idMarca);
+    this.#precoVenda = preco;
+    this.#qntEstoque = estoque;
+    this.#descricaoProduto = (this.#descricaoProduto || "").trim();
+    return null;
+  }
+
+  //devolve { ok } ou { ok: false, erro }
   async cadastrar() {
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "insert into PRODUTOS (ID_CATEGORIA, ID_MARCA, NOME_PRODUTO, DESCRICAO, PRECO_VENDA, QNT_ESTOQUE) values (?,?,?,?,?,?)";
     let valores = [
@@ -92,17 +132,32 @@ class Produtos {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
+  //o produto nao pode ser excluido se estiver em pedido, lote ou promocao.
+  //Devolve { ok } ou { ok: false, erro }
   async excluir(id) {
+    if (!idValido(id)) {
+      return { ok: false, erro: "Produto inválido." };
+    }
+    if (await this.possuiPedidos(id)) {
+      return { ok: false, erro: "Este produto está em pedidos e não pode ser excluído." };
+    }
+    if (await this.possuiLotes(id)) {
+      return { ok: false, erro: "Este produto possui lotes no estoque e não pode ser excluído." };
+    }
+    if (await this.possuiPromocoes(id)) {
+      return { ok: false, erro: "Este produto está em uma promoção e não pode ser excluído." };
+    }
+
     let sql = "delete from PRODUTOS where ID_PRODUTO = ?";
     let valores = [id];
 
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
   //usados antes de excluir: o produto nao pode estar em pedido, lote ou promocao
@@ -162,7 +217,16 @@ class Produtos {
     return lista;
   }
 
+  //devolve { ok } ou { ok: false, erro }
   async alterar() {
+    if (!idValido(this.#id)) {
+      return { ok: false, erro: "Produto inválido." };
+    }
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "update PRODUTOS set ID_CATEGORIA = ?, ID_MARCA = ?, NOME_PRODUTO = ?, DESCRICAO = ?, PRECO_VENDA = ?, QNT_ESTOQUE = ? where ID_PRODUTO = ?";
     let valores = [
@@ -178,7 +242,7 @@ class Produtos {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
   //listagem com JOIN para trazer o nome da categoria e da marca.
@@ -199,7 +263,13 @@ class Produtos {
     return linhas;
   }
 
+  //devolve o produto (com nome da categoria e da marca), ou null se o id
+  //for invalido ou nao existir
   async buscarPorId(id) {
+    if (!idValido(id)) {
+      return null;
+    }
+
     let sql =
       "select p.ID_PRODUTO, p.NOME_PRODUTO, p.DESCRICAO, p.PRECO_VENDA, p.QNT_ESTOQUE, " +
       "p.ID_CATEGORIA, p.ID_MARCA, c.NOME_CATEGORIA, m.NOME_MARCA " +

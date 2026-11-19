@@ -1,5 +1,7 @@
 const Marca = require("../models/marcaModel");
 
+//o controller so le a requisicao e devolve a resposta:
+//as regras de validacao ficam no model (Marca.validar)
 class MarcaController {
   async listar(req, res) {
     let marcas = await new Marca().listar();
@@ -16,13 +18,7 @@ class MarcaController {
   }
 
   async buscar(req, res) {
-    let id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0) {
-      res.send({ ok: false, erro: "ID inválido." });
-      return;
-    }
-
-    let marca = await new Marca().buscarPorId(id);
+    let marca = await new Marca().buscarPorId(req.params.id);
     if (marca == null) {
       res.send({ ok: false, erro: "Marca não encontrada." });
     } else {
@@ -35,48 +31,18 @@ class MarcaController {
   }
 
   async cadastrar(req, res) {
-    let nome = req.body.nome;
-
-    if (typeof nome == "string" && nome.trim() != "") {
-      let marca = new Marca(0, nome.trim());
-      let okRetornoBanco = await marca.cadastrar();
-      res.send({ ok: okRetornoBanco });
-    } else {
-      res.send({ ok: false });
-    }
+    let marca = new Marca(0, req.body.nome);
+    res.send(await marca.cadastrar());
   }
 
   async alterar(req, res) {
-    let id = req.body.id;
-    let nome = req.body.nome;
-
-    if (id && id > 0 && typeof nome == "string" && nome.trim() != "") {
-      let marca = new Marca(id, nome.trim());
-      let okRetornoBanco = await marca.alterar();
-      res.send({ ok: okRetornoBanco });
-    } else {
-      res.send({ ok: false });
-    }
+    let marca = new Marca(req.body.id, req.body.nome);
+    res.send(await marca.alterar());
   }
 
   //exclusao via fetch
   async excluir(req, res) {
-    let idExclusao = req.params.id;
-    if (idExclusao && idExclusao > 0) {
-      let marca = new Marca();
-      let temProdutos = await marca.possuiProdutos(idExclusao);
-      if (temProdutos) {
-        res.send({
-          ok: false,
-          erro: "Esta marca possui produtos vinculados e não pode ser excluída.",
-        });
-      } else {
-        let result = await marca.excluir(idExclusao);
-        res.send({ ok: result });
-      }
-    } else {
-      res.send({ ok: false });
-    }
+    res.send(await new Marca().excluir(req.params.id));
   }
 }
 

@@ -63,7 +63,28 @@ function diasValidos(valor, padrao) {
   return dias;
 }
 
+//true se o valor for um texto que nao esta vazio
+function textoPreenchido(valor) {
+  return typeof valor == "string" && valor.trim() != "";
+}
+
+//campo opcional: devolve o texto sem espacos nas pontas, ou null se veio vazio
+function textoOuNulo(valor) {
+  if (textoPreenchido(valor)) {
+    return valor.trim();
+  }
+  return null;
+}
+
+//tira tudo que nao for numero: "123.456.789-00" -> "12345678900"
+function somenteDigitos(valor) {
+  return String(valor).replace(/\D/g, "");
+}
+
 module.exports = {
+  textoPreenchido,
+  textoOuNulo,
+  somenteDigitos,
   idValido,
   idOpcional,
   dataValida,
