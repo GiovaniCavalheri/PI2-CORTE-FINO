@@ -104,7 +104,7 @@
           class="cartao-produto"
           data-tipo="<%= tipo %>"
           data-id="<%= produtos[i].ID_PRODUTO %>"
-          data-preco="<%= produtos[i].PRECO_VENDA %>"
+          data-preco="<%= produtos[i].PRECO_ATUAL %>"
           data-estoque="<%= produtos[i].QNT_ESTOQUE %>"
         >
           <div class="area-img-produto">
@@ -121,7 +121,11 @@
             <p class="descricao-produto"><%= produtos[i].DESCRICAO %></p>
 
             <div class="preco-produto">
-              <span class="preco-atual">R$ <%= produtos[i].PRECO_VENDA %></span>
+              <% if (Number(produtos[i].PRECO_ATUAL) < Number(produtos[i].PRECO_VENDA)) { %>
+              <!-- produto em promocao: mostra o preco antigo riscado -->
+              <span class="preco-antigo">R$ <%= produtos[i].PRECO_VENDA %></span>
+              <% } %>
+              <span class="preco-atual">R$ <%= produtos[i].PRECO_ATUAL %></span>
               <span class="unidade-preco">/kg</span>
             </div>
 

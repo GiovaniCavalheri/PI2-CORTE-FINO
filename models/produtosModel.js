@@ -1,4 +1,5 @@
 const Database = require("../database/database");
+const Promocao = require("./promocaoModel");
 
 class Produtos {
   #id;
@@ -180,11 +181,14 @@ class Produtos {
     return result;
   }
 
-  //listagem com JOIN para trazer o nome da categoria e da marca
+  //listagem com JOIN para trazer o nome da categoria e da marca.
+  //PRECO_ATUAL = preco com a promocao em vigor (ou o preco de venda)
   async listarDetalhado() {
     let sql =
       "select p.ID_PRODUTO, p.NOME_PRODUTO, p.DESCRICAO, p.PRECO_VENDA, p.QNT_ESTOQUE, " +
-      "p.ID_CATEGORIA, p.ID_MARCA, c.NOME_CATEGORIA, m.NOME_MARCA " +
+      "p.ID_CATEGORIA, p.ID_MARCA, c.NOME_CATEGORIA, m.NOME_MARCA, " +
+      Promocao.SQL_PRECO_ATUAL +
+      " as PRECO_ATUAL " +
       "from PRODUTOS p " +
       "inner join CATEGORIAS_PRODUTO c on p.ID_CATEGORIA = c.ID_CATEGORIA " +
       "inner join MARCA m on p.ID_MARCA = m.ID_MARCA";

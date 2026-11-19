@@ -1,4 +1,5 @@
 const Database = require("../database/database");
+const Promocao = require("./promocaoModel");
 
 //status inicial: o pagamento e feito na entrega
 const STATUS_INICIAL = "Aguardando Separação";
@@ -113,8 +114,11 @@ class Pedidos {
     try {
       return await banco.ExecutaTransacao(async (executar) => {
         //"for update" trava as linhas dos produtos ate o fim da transacao
+        //PRECO_ATUAL ja vem com o desconto da promocao em vigor, se houver
         let produtos = await executar(
-          "select p.ID_PRODUTO, p.PRECO_VENDA, p.QNT_ESTOQUE, c.NOME_CATEGORIA " +
+          "select p.ID_PRODUTO, " +
+            Promocao.SQL_PRECO_ATUAL +
+            " as PRECO_ATUAL, p.QNT_ESTOQUE, c.NOME_CATEGORIA " +
             "from PRODUTOS p inner join CATEGORIAS_PRODUTO c on c.ID_CATEGORIA = p.ID_CATEGORIA " +
             "where p.ID_PRODUTO in (?) for update",
           [itens.map((item) => item.idProduto)],
@@ -129,7 +133,7 @@ class Pedidos {
           if (!produto || produto.QNT_ESTOQUE < item.quantidade) {
             throw erroEstoque(item.idProduto);
           }
-          centavos += Math.round(Number(produto.PRECO_VENDA) * 100) * item.quantidade;
+          centavos += Math.round(Number(produto.PRECO_ATUAL) * 100) * item.quantidade;
           tipos.add(tipoDaCategoria(produto.NOME_CATEGORIA));
         }
         //pedido com tipos diferentes de carne e registrado como Kit
@@ -141,6 +145,26 @@ class Pedidos {
             "update PRODUTOS set QNT_ESTOQUE = QNT_ESTOQUE - ? where ID_PRODUTO = ?",
             [item.quantidade, item.idProduto],
           );
+
+          //baixa tambem dos lotes, primeiro os que vencem antes (lotes vencidos
+          //ficam para o descarte). Estoque antigo, de antes dos lotes, nao tem
+          //lote: nesse caso a baixa fica so no produto.
+          let lotes = await executar(
+            "select ID_LOTE, QNT_LOTE from LOTE " +
+              "where ID_PRODUTO = ? and QNT_LOTE > 0 and DATA_VALIDADE >= curdate() " +
+              "order by DATA_VALIDADE, ID_LOTE for update",
+            [item.idProduto],
+          );
+          let restante = item.quantidade;
+          for (let lote of lotes) {
+            if (restante == 0) break;
+            let baixa = Math.min(restante, lote.QNT_LOTE);
+            await executar(
+              "update LOTE set QNT_LOTE = QNT_LOTE - ? where ID_LOTE = ?",
+              [baixa, lote.ID_LOTE],
+            );
+            restante -= baixa;
+          }
         }
 
         let pedido = await executar(
