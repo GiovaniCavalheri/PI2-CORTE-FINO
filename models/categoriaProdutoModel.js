@@ -94,6 +94,19 @@ class CategoriasProduto {
 
     return result;
   }
+
+  async buscarPorID(id) {
+    let sql = "SELECT * FROM CATEGORIAS_PRODUTO WHERE ID_CATEGORIA = ?";
+    let valores = [id];
+
+    let banco = new Database();
+    let result = banco.ExecutaComando(sql, valores);
+    if (result.length == 0) {
+      return null;
+    } else {
+      return result[0];
+    }
+  }
 }
 
 module.exports = CategoriasProduto;
