@@ -5,12 +5,23 @@ class Lote {
   #idProduto;
   #dataValidade;
   #qntLote;
+  #codigoLote;
+  #dataFabricacao;
 
-  constructor(id, idProduto, dataValidade, qntLote) {
+  constructor(
+    id,
+    idProduto,
+    dataValidade,
+    qntLote,
+    codigoLote,
+    dataFabricacao,
+  ) {
     this.#id = id;
     this.#idProduto = idProduto;
     this.#dataValidade = dataValidade;
     this.#qntLote = qntLote;
+    this.#codigoLote = codigoLote;
+    this.#dataFabricacao = dataFabricacao;
   }
 
   get id() {
@@ -41,10 +52,30 @@ class Lote {
     this.#qntLote = valor;
   }
 
+  get codigoLote() {
+    return this.#codigoLote;
+  }
+  set codigoLote(valor) {
+    this.#codigoLote = valor;
+  }
+
+  get dataFabricacao() {
+    return this.#dataFabricacao;
+  }
+  set dataFabricacao(valor) {
+    this.#dataFabricacao = valor;
+  }
+
   async cadastrar() {
     let sql =
-      "insert into LOTE (ID_PRODUTO, DATA_VALIDADE, QNT_LOTE) values (?,?,?)";
-    let valores = [this.#idProduto, this.#dataValidade, this.#qntLote];
+      "insert into LOTE (ID_PRODUTO, DATA_VALIDADE, QNT_LOTE, CODIGO_LOTE, DATA_FABRICACAO) values (?,?,?,?,?)";
+    let valores = [
+      this.#idProduto,
+      this.#dataValidade,
+      this.#qntLote,
+      this.#codigoLote,
+      this.#dataFabricacao,
+    ];
 
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
@@ -76,6 +107,8 @@ class Lote {
         linha["ID_PRODUTO"],
         linha["DATA_VALIDADE"],
         linha["QNT_LOTE"],
+        linha["CODIGO_LOTE"],
+        linha["DATA_FABRICACAO"],
       );
 
       lista.push(lote);
@@ -85,11 +118,13 @@ class Lote {
 
   async alterar() {
     let sql =
-      "update LOTE set ID_PRODUTO = ?, DATA_VALIDADE = ?, QNT_LOTE = ? where ID_LOTE = ?";
+      "update LOTE set ID_PRODUTO = ?, DATA_VALIDADE = ?, QNT_LOTE = ?, CODIGO_LOTE = ?, DATA_FABRICACAO = ? where ID_LOTE = ?";
     let valores = [
       this.#idProduto,
       this.#dataValidade,
       this.#qntLote,
+      this.#codigoLote,
+      this.#dataFabricacao,
       this.#id,
     ];
 
