@@ -9,14 +9,18 @@
 </script>
 <% } else { %>
 <div class="header-top py-2">
-  <div class="container d-flex justify-content-end gap-3">
+  <!-- em telas pequenas quebra a linha (sem isso a pagina passava da
+       largura da tela e o botao de menu ficava escondido) -->
+  <div class="container d-flex flex-wrap justify-content-center justify-content-md-end column-gap-3">
     <span><i class="fas fa-phone"></i> (18) 4002-8922</span>
-    <span class="divisor">|</span>
+    <span class="divisor d-none d-md-inline">|</span>
     <span><i class="fa-solid fa-clock"></i> Seg-Sab: 7h-19h | Dom: 7h-13h</span>
   </div>
 </div>
 
-<nav class="navbar navbar-expand-lg main-header sticky-top">
+<!-- o menu fica em uma linha so a partir de 1200px (navbar-expand-xl);
+     abaixo disso vira o botao de menu, aberto pelo script no fim do arquivo -->
+<nav class="navbar navbar-expand-xl main-header sticky-top">
   <div class="container">
     <a class="navbar-brand logo-area" href="/">
       <img src="/images/logo-c-f.png" alt="Logo Corte Fino" />
@@ -25,8 +29,7 @@
     <button
       class="navbar-toggler"
       type="button"
-      data-bs-toggle="collapse"
-      data-bs-target="#menuPrincipal"
+      id="btnMenuPrincipal"
       aria-controls="menuPrincipal"
       aria-expanded="false"
       aria-label="Abrir menu"
@@ -34,7 +37,7 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="menuPrincipal">
-      <ul class="nav nav-pills ms-auto">
+      <ul class="nav nav-pills ms-auto menu-principal">
         <li class="nav-item">
           <a href="/" class="nav-link <%= currentPage === 'index' ? 'active' : '' %>">Início</a>
         </li>
@@ -64,7 +67,7 @@
         <!-- so aparece para quem entrou como fornecedor (o servidor tambem
              confere o login nas rotas /area-fornecedor) -->
         <li class="nav-item" id="menuFornecedor" hidden>
-          <a href="/area-fornecedor/produtos" class="nav-link <%= currentPage === 'fornecedor' ? 'active' : '' %>">Área do Fornecedor</a>
+          <a href="/area-fornecedor/produtos" class="nav-link <%= currentPage === 'fornecedor' ? 'active' : '' %>" title="Área do Fornecedor"><span class="texto-menu-longo">Área do </span>Fornecedor</a>
         </li>
         <!-- sem "d-flex" aqui: o display:flex !important do Bootstrap venceria
              o atributo hidden e o "Sair" apareceria sem login. O d-flex so e
@@ -98,6 +101,13 @@
     contador.hidden = total === 0;
   };
   window.atualizarContadorCarrinho();
+
+  //abre e fecha o menu nas telas menores (sem depender do JS do Bootstrap,
+  //que nem toda pagina carrega)
+  document.querySelector("#btnMenuPrincipal").addEventListener("click", function () {
+    let aberto = document.querySelector("#menuPrincipal").classList.toggle("show");
+    this.setAttribute("aria-expanded", String(aberto));
+  });
 
   //mostra o nome do usuario logado (guardado no login pelo join.js)
   let usuario = null;

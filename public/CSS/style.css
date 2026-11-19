@@ -95,6 +95,53 @@
   font-size: 0.85rem;
 }
 
+/* menu do header: em coluna quando aberto pelo botao (< 1200px) */
+.menu-principal {
+  flex-direction: column;
+  padding: 8px 0;
+}
+
+/* em linha (>= 1200px): nao quebra linha e usa espacamento menor para
+   caber logo, links, nome do usuario e Sair na mesma linha */
+@media (min-width: 1200px) {
+  .menu-principal {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    padding: 0;
+  }
+
+  .menu-principal .nav-link {
+    padding: 8px 9px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .logo-area img {
+    height: 48px;
+  }
+
+  .logo-area span {
+    font-size: 1.5rem !important;
+  }
+
+  /* "Área do Fornecedor" vira so "Fornecedor" ate 1400px */
+  .texto-menu-longo {
+    display: none;
+  }
+}
+
+@media (min-width: 1400px) {
+  .menu-principal .nav-link {
+    padding: 8px 12px;
+    font-size: 15px;
+  }
+
+  .texto-menu-longo {
+    display: inline;
+  }
+}
+
 /* quantidade de itens no carrinho (header) */
 .contador-carrinho {
   display: inline-block;
