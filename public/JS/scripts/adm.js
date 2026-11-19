@@ -29,6 +29,11 @@ document.addEventListener("DOMContentLoaded", function() {
         }).then(function(CorpoResposta) {
             botao.disabled = false;
             if(CorpoResposta.ok) {
+                //guarda o admin logado: compra e descarte registram quem fez
+                localStorage.setItem("adm_corte_fino", JSON.stringify({
+                    id: CorpoResposta.id,
+                    nome: CorpoResposta.nome
+                }));
                 alert("Bem-vindo, " + CorpoResposta.nome + "!");
                 window.location.href = "/pageAdm";
             }

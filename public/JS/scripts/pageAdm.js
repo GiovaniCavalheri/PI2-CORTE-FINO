@@ -26,7 +26,10 @@
           socios: "Sócios",
           fornecedores: "Fornecedores",
           pedidos: "Pedidos",
-          relatorios: "Relatorios",
+          compras: "Compras",
+          promocoes: "Promoções",
+          descartes: "Descartes",
+          relatorios: "Relatórios",
         };
 
         function navigateTo(secao) {
@@ -280,11 +283,21 @@
             renderizarMarcas(dados[2]);
             renderizarSocios(dados[3]);
             renderizarFornecedores(dados[4]);
+            //listas usadas nos selects de compra e relatorios
+            cache.produtos = dados[0];
+            cache.categorias = dados[1];
+            cache.marcas = dados[2];
+            cache.fornecedores = dados[4];
+            preencherSelectsEstoque();
             carregarPedidos();
+            carregarEstoque();
           } catch (erro) {
             alert("Não foi possível carregar os cadastros: " + erro.message);
           }
         }
+
+        //listas carregadas em carregarListas (usadas nas telas de estoque)
+        var cache = { produtos: [], categorias: [], marcas: [], fornecedores: [] };
 
         carregarListas();
 
@@ -294,38 +307,6 @@
             navigateTo(this.getAttribute("data-section"));
           });
         });
-
-        document
-          .querySelector("#uploadRelatorio")
-          .addEventListener("change", function () {
-            var arquivo = this.files[0];
-            if (!arquivo) return;
-
-            var leitor = new FileReader();
-            leitor.onload = function (evento) {
-              var cartao = document.createElement("div");
-              cartao.className = "report-card";
-              var imagem = document.createElement("div");
-              imagem.className = "report-img";
-              var elementoImagem = document.createElement("img");
-              elementoImagem.src = evento.target.result;
-              elementoImagem.alt = arquivo.name;
-              elementoImagem.className = "report-upload-image";
-              imagem.appendChild(elementoImagem);
-
-              var corpo = document.createElement("div");
-              corpo.className = "report-body";
-              var titulo = document.createElement("h6");
-              titulo.textContent = arquivo.name;
-              var descricao = document.createElement("p");
-              descricao.textContent = "Adicionado agora";
-              corpo.append(titulo, descricao);
-              cartao.append(imagem, corpo);
-              document.querySelector("#reportGrid").appendChild(cartao);
-            };
-            leitor.readAsDataURL(arquivo);
-            this.value = "";
-          });
 
         // ──────────────────────────────────────────────
         // PRODUTOS - GRAVAR (cadastrar ou alterar)
@@ -1230,4 +1211,733 @@
               select.value = select.dataset.atual;
             });
         }
+
+        // ──────────────────────────────────────────────
+        // ESTOQUE - FUNCOES COMUNS
+        // ──────────────────────────────────────────────
+        function formatarMoeda(valor) {
+          return "R$ " + Number(valor || 0).toFixed(2).replace(".", ",");
+        }
+
+        // admin que fez login em /adm (gravado pelo adm.js)
+        function admLogado() {
+          try {
+            var adm = JSON.parse(localStorage.getItem("adm_corte_fino"));
+            return adm && adm.id ? adm : null;
+          } catch (erro) {
+            return null;
+          }
+        }
+
+        function exigirAdm() {
+          var adm = admLogado();
+          if (!adm) {
+            alert("Entre como administrador (página /adm) para registrar esta operação.");
+          }
+          return adm;
+        }
+
+        // preenche um select mantendo a opcao que ja estava escolhida
+        function preencherSelect(select, textoVazio, itens, valor, texto) {
+          var escolhido = select.value;
+          select.replaceChildren(new Option(textoVazio, ""));
+          itens.forEach(function (item) {
+            select.add(new Option(texto(item), valor(item)));
+          });
+          select.value = escolhido;
+          if (select.selectedIndex == -1) select.value = "";
+        }
+
+        function nomeFornecedor(fornecedor) {
+          return fornecedor.nomeFantasia
+            ? fornecedor.nomeFantasia + " (" + fornecedor.nomeFornecedor + ")"
+            : fornecedor.nomeFornecedor;
+        }
+
+        function preencherSelectsEstoque() {
+          var idFornecedor = function (f) { return f.id; };
+          preencherSelect(document.querySelector("#compraFornecedor"), "Selecione...",
+            cache.fornecedores, idFornecedor, nomeFornecedor);
+          preencherSelect(document.querySelector("#filtroCompraFornecedor"), "Todos os fornecedores",
+            cache.fornecedores, idFornecedor, nomeFornecedor);
+          preencherSelect(document.querySelector("#relatorioFornecedor"), "Todos",
+            cache.fornecedores, idFornecedor, nomeFornecedor);
+          preencherSelect(document.querySelector("#relatorioCategoria"), "Todas",
+            cache.categorias, function (c) { return c.id; }, function (c) { return c.nomeCategoria; });
+          preencherSelect(document.querySelector("#relatorioMarca"), "Todas",
+            cache.marcas, function (m) { return m.id; }, function (m) { return m.nomeMarca; });
+          document.querySelectorAll("#itensCompra .compra-produto").forEach(function (select) {
+            preencherSelectProduto(select);
+          });
+        }
+
+        // recarrega as listas das telas de compras, promocoes e descartes
+        function carregarEstoque() {
+          carregarCompras();
+          buscarProximosVencimento();
+          carregarPromocoesAtivas();
+          carregarVencidos();
+          carregarDescartes();
+        }
+
+        // monta "?a=1&b=2" so com os filtros preenchidos
+        function montarQuery(filtros) {
+          var parametros = new URLSearchParams();
+          Object.keys(filtros).forEach(function (chave) {
+            if (filtros[chave] !== "" && filtros[chave] != null) {
+              parametros.append(chave, filtros[chave]);
+            }
+          });
+          var texto = parametros.toString();
+          return texto ? "?" + texto : "";
+        }
+
+        // ──────────────────────────────────────────────
+        // COMPRAS - ITENS DO FORMULARIO
+        // ──────────────────────────────────────────────
+        var itensCompra = document.querySelector("#itensCompra");
+
+        function preencherSelectProduto(select) {
+          preencherSelect(select, "Selecione...", cache.produtos,
+            function (p) { return p.ID_PRODUTO; },
+            function (p) { return p.NOME_PRODUTO + " — " + p.NOME_MARCA; });
+        }
+
+        function criarCampo(tipo, classe, atributos) {
+          var campo = document.createElement("input");
+          campo.type = tipo;
+          campo.className = classe;
+          Object.keys(atributos || {}).forEach(function (chave) {
+            campo.setAttribute(chave, atributos[chave]);
+          });
+          var celula = document.createElement("td");
+          celula.appendChild(campo);
+          return celula;
+        }
+
+        function adicionarItemCompra() {
+          var linha = document.createElement("tr");
+
+          var celulaProduto = document.createElement("td");
+          var produto = document.createElement("select");
+          produto.className = "compra-produto";
+          preencherSelectProduto(produto);
+          celulaProduto.appendChild(produto);
+
+          var remover = criarBotaoAcao("btn-danger btnRemoverItemCompra", "", "fa-solid fa-xmark");
+          remover.title = "Remover produto";
+          var celulaRemover = document.createElement("td");
+          celulaRemover.appendChild(remover);
+
+          linha.append(
+            celulaProduto,
+            criarCampo("number", "compra-quantidade", { min: "1", step: "1", placeholder: "0" }),
+            criarCampo("number", "compra-preco", { min: "0", step: "0.01", placeholder: "0.00" }),
+            criarCampo("text", "compra-lote", { maxlength: "20", placeholder: "Ex: L2026-11" }),
+            criarCampo("date", "compra-fabricacao", { max: hojeMais(0) }),
+            criarCampo("date", "compra-validade", { min: hojeMais(0) }),
+            celulaRemover,
+          );
+          itensCompra.appendChild(linha);
+          atualizarTotalCompra();
+        }
+
+        function atualizarTotalCompra() {
+          var total = 0;
+          itensCompra.querySelectorAll("tr").forEach(function (linha) {
+            var quantidade = Number(linha.querySelector(".compra-quantidade").value) || 0;
+            var preco = Number(linha.querySelector(".compra-preco").value) || 0;
+            total += quantidade * preco;
+          });
+          document.querySelector("#totalCompra").textContent = formatarMoeda(total);
+        }
+
+        function limparCompra() {
+          document.querySelector("#compraFornecedor").value = "";
+          itensCompra.replaceChildren();
+          adicionarItemCompra();
+        }
+
+        itensCompra.addEventListener("input", atualizarTotalCompra);
+        itensCompra.addEventListener("click", function (evento) {
+          var botao = evento.target.closest(".btnRemoverItemCompra");
+          if (!botao) return;
+          botao.closest("tr").remove();
+          if (itensCompra.children.length == 0) adicionarItemCompra();
+          atualizarTotalCompra();
+        });
+
+        document.querySelector("#btnAdicionarItemCompra").addEventListener("click", adicionarItemCompra);
+        document.querySelector("#btnLimparCompra").addEventListener("click", limparCompra);
+        document.querySelector("#btnRegistrarCompra").addEventListener("click", registrarCompra);
+
+        // ──────────────────────────────────────────────
+        // COMPRAS - REGISTRAR
+        // ──────────────────────────────────────────────
+        async function registrarCompra() {
+          var adm = exigirAdm();
+          if (!adm) return;
+
+          var idFornecedor = document.querySelector("#compraFornecedor").value;
+          if (idFornecedor == "") {
+            alert("Selecione o fornecedor.");
+            return;
+          }
+
+          var itens = [];
+          var incompleto = false;
+          itensCompra.querySelectorAll("tr").forEach(function (linha) {
+            var item = {
+              idProduto: linha.querySelector(".compra-produto").value,
+              quantidade: linha.querySelector(".compra-quantidade").value,
+              precoCompra: linha.querySelector(".compra-preco").value,
+              codigoLote: linha.querySelector(".compra-lote").value.trim(),
+              dataFabricacao: linha.querySelector(".compra-fabricacao").value,
+              dataValidade: linha.querySelector(".compra-validade").value,
+            };
+            Object.keys(item).forEach(function (campo) {
+              if (item[campo] === "") incompleto = true;
+            });
+            itens.push(item);
+          });
+          if (incompleto) {
+            alert("Preencha todos os campos de cada produto da compra.");
+            return;
+          }
+
+          try {
+            var resposta = await enviarJson("/compra/cadastrar", {
+              idFornecedor: idFornecedor,
+              idAdm: adm.id,
+              itens: itens,
+            });
+            if (!resposta.ok) {
+              throw new Error(resposta.erro || "O servidor não registrou a compra.");
+            }
+            alert("Compra nº " + resposta.idCompra + " registrada! O estoque foi atualizado.");
+            limparCompra();
+            await carregarListas();
+          } catch (erro) {
+            alert("Erro ao registrar a compra: " + erro.message);
+          }
+        }
+
+        // ──────────────────────────────────────────────
+        // COMPRAS - HISTORICO
+        // ──────────────────────────────────────────────
+        var listaCompras = document.querySelector("#listaCompras");
+        document.querySelector("#btnFiltrarCompras").addEventListener("click", carregarCompras);
+
+        function textoItemCompra(item) {
+          return item.QNT_COMPRADA + "x " + item.NOME_PRODUTO + " a " +
+            formatarMoeda(item.VALOR_COMPRA) + " · lote " + item.CODIGO_LOTE +
+            " · val. " + formatarData(item.DATA_VALIDADE);
+        }
+
+        async function carregarCompras() {
+          var query = montarQuery({
+            idFornecedor: document.querySelector("#filtroCompraFornecedor").value,
+            dataInicio: document.querySelector("#filtroCompraInicio").value,
+            dataFim: document.querySelector("#filtroCompraFim").value,
+          });
+          try {
+            var resposta = await requisicaoJson("/compra/listar" + query);
+            if (!resposta.ok) throw new Error(resposta.erro);
+            listaCompras.replaceChildren();
+            if (resposta.compras.length == 0) {
+              linhaVazia(listaCompras, 6, "Nenhuma compra encontrada.");
+            }
+            resposta.compras.forEach(function (compra) {
+              var linha = document.createElement("tr");
+              var celulaItens = document.createElement("td");
+              var lista = document.createElement("ul");
+              lista.className = "itens-pedido";
+              compra.ITENS.forEach(function (item) {
+                var li = document.createElement("li");
+                li.textContent = textoItemCompra(item);
+                lista.appendChild(li);
+              });
+              celulaItens.appendChild(lista);
+              linha.append(
+                criarCelula(compra.ID_COMPRA),
+                criarCelula(formatarDataHora(compra.DATA_COMPRA)),
+                criarCelula(compra.NOME_FANTASIA || compra.NOME_FORNECEDOR),
+                celulaItens,
+                criarCelula(formatarMoeda(compra.VALOR_TOTAL)),
+                criarCelula(compra.NOME_ADM),
+              );
+              listaCompras.appendChild(linha);
+            });
+          } catch (erro) {
+            alert("Erro ao carregar as compras: " + erro.message);
+          }
+        }
+
+        // ──────────────────────────────────────────────
+        // PROMOCOES - PRODUTOS PROXIMOS DO VENCIMENTO
+        // ──────────────────────────────────────────────
+        var listaProximosVencimento = document.querySelector("#listaProximosVencimento");
+        document.querySelector("#btnBuscarVencimento").addEventListener("click", buscarProximosVencimento);
+        listaProximosVencimento.addEventListener("change", atualizarSelecaoPromocao);
+
+        async function buscarProximosVencimento() {
+          var dias = document.querySelector("#diasVencimento").value;
+          try {
+            var resposta = await requisicaoJson(
+              "/promocao/proximos-vencimento" + montarQuery({ dias: dias }),
+            );
+            if (!resposta.ok) throw new Error(resposta.erro);
+            listaProximosVencimento.replaceChildren();
+            if (resposta.lotes.length == 0) {
+              linhaVazia(listaProximosVencimento, 8,
+                "Nenhum lote vence nos próximos " + resposta.dias + " dia(s).");
+            }
+            resposta.lotes.forEach(function (lote) {
+              var linha = document.createElement("tr");
+
+              var celulaMarcar = document.createElement("td");
+              var marcar = document.createElement("input");
+              marcar.type = "checkbox";
+              marcar.className = "marcar-promocao";
+              marcar.value = lote.ID_PRODUTO;
+              marcar.dataset.nome = lote.NOME_PRODUTO;
+              //produto que ja esta em promocao nao pode entrar em outra no mesmo periodo
+              marcar.disabled = lote.EM_PROMOCAO == 1;
+              celulaMarcar.appendChild(marcar);
+
+              var celulaPromocao = document.createElement("td");
+              var selo = document.createElement("span");
+              selo.className = lote.EM_PROMOCAO == 1 ? "badge badge-ativo" : "badge badge-inativo";
+              selo.textContent = lote.EM_PROMOCAO == 1 ? "Já em promoção" : "Sem promoção";
+              celulaPromocao.appendChild(selo);
+
+              linha.append(
+                celulaMarcar,
+                criarCelula(lote.NOME_PRODUTO),
+                criarCelula(lote.CODIGO_LOTE),
+                criarCelula(formatarData(lote.DATA_VALIDADE)),
+                criarCelula(lote.DIAS_RESTANTES == 0 ? "hoje" : lote.DIAS_RESTANTES + " dia(s)"),
+                criarCelula(lote.QNT_LOTE),
+                criarCelula(formatarMoeda(lote.PRECO_VENDA)),
+                celulaPromocao,
+              );
+              listaProximosVencimento.appendChild(linha);
+            });
+            atualizarSelecaoPromocao();
+          } catch (erro) {
+            alert("Erro ao buscar produtos próximos do vencimento: " + erro.message);
+          }
+        }
+
+        // produtos marcados (sem repetir: o mesmo produto pode ter varios lotes)
+        function produtosMarcados() {
+          var marcados = {};
+          listaProximosVencimento.querySelectorAll(".marcar-promocao:checked").forEach(function (caixa) {
+            marcados[caixa.value] = caixa.dataset.nome;
+          });
+          return marcados;
+        }
+
+        function atualizarSelecaoPromocao() {
+          var nomes = Object.values(produtosMarcados());
+          document.querySelector("#produtosSelecionadosPromocao").textContent =
+            nomes.length ? nomes.join(", ") : "nenhum";
+        }
+
+        // ──────────────────────────────────────────────
+        // PROMOCOES - DEFINIR
+        // ──────────────────────────────────────────────
+        var promocaoTipo = document.querySelector("#promocaoTipo");
+        promocaoTipo.addEventListener("change", function () {
+          document.querySelector("#rotuloPromocaoValor").textContent =
+            promocaoTipo.value == "percentual" ? "Desconto (%) *" : "Preço promocional (R$) *";
+          document.querySelector("#promocaoValor").placeholder =
+            promocaoTipo.value == "percentual" ? "Ex: 20" : "Ex: 69.90";
+        });
+        document.querySelector("#btnSalvarPromocao").addEventListener("click", salvarPromocao);
+
+        function limparPromocao() {
+          promocaoTipo.value = "percentual";
+          promocaoTipo.dispatchEvent(new Event("change"));
+          document.querySelector("#promocaoValor").value = "";
+          document.querySelector("#promocaoInicio").value = hojeMais(0);
+          document.querySelector("#promocaoFim").value = hojeMais(7);
+        }
+
+        async function salvarPromocao() {
+          var ids = Object.keys(produtosMarcados());
+          var valor = document.querySelector("#promocaoValor").value;
+          var dataInicio = document.querySelector("#promocaoInicio").value;
+          var dataFim = document.querySelector("#promocaoFim").value;
+
+          if (ids.length == 0) {
+            alert("Marque pelo menos um produto na lista de próximos do vencimento.");
+            return;
+          }
+          if (valor == "" || dataInicio == "" || dataFim == "") {
+            alert("Preencha o desconto e as datas de início e fim.");
+            return;
+          }
+
+          try {
+            var resposta = await enviarJson("/promocao/cadastrar", {
+              idsProdutos: ids,
+              tipo: promocaoTipo.value,
+              valor: valor,
+              dataInicio: dataInicio,
+              dataFim: dataFim,
+            });
+            if (!resposta.ok) {
+              throw new Error(resposta.erro || "O servidor não gravou a promoção.");
+            }
+            alert("Promoção criada com sucesso!");
+            limparPromocao();
+            buscarProximosVencimento();
+            carregarPromocoesAtivas();
+          } catch (erro) {
+            alert("Erro ao salvar a promoção: " + erro.message);
+          }
+        }
+
+        // ──────────────────────────────────────────────
+        // PROMOCOES - ATIVAS E ENCERRAR
+        // ──────────────────────────────────────────────
+        var listaPromocoesAtivas = document.querySelector("#listaPromocoesAtivas");
+
+        async function carregarPromocoesAtivas() {
+          try {
+            var resposta = await requisicaoJson("/promocao/ativas");
+            listaPromocoesAtivas.replaceChildren();
+            if (resposta.promocoes.length == 0) {
+              linhaVazia(listaPromocoesAtivas, 6, "Nenhuma promoção ativa.");
+            }
+            resposta.promocoes.forEach(function (promocao) {
+              var linha = document.createElement("tr");
+
+              var celulaProdutos = document.createElement("td");
+              var lista = document.createElement("ul");
+              lista.className = "itens-pedido";
+              promocao.PRODUTOS.forEach(function (produto) {
+                var li = document.createElement("li");
+                li.textContent = produto.NOME_PRODUTO + ": " +
+                  formatarMoeda(produto.PRECO_VENDA) + " → " + formatarMoeda(produto.PRECO_FINAL);
+                lista.appendChild(li);
+              });
+              celulaProdutos.appendChild(lista);
+
+              var desconto = promocao.PRECO_PROMOCIONAL != null
+                ? "Preço fixo " + formatarMoeda(promocao.PRECO_PROMOCIONAL)
+                : Number(promocao.DESCONTO_PORC) + "%";
+
+              var celulaSituacao = document.createElement("td");
+              var selo = document.createElement("span");
+              selo.className = promocao.EM_VIGOR ? "badge badge-ativo" : "badge badge-destaque";
+              selo.textContent = promocao.EM_VIGOR ? "Em vigor" : "Agendada";
+              celulaSituacao.appendChild(selo);
+
+              var celulaAcoes = document.createElement("td");
+              var encerrar = criarBotaoAcao("btn-danger btnEncerrarPromocao",
+                promocao.ID_PROMOCAO, "fa-solid fa-ban");
+              encerrar.title = "Encerrar promoção";
+              celulaAcoes.appendChild(encerrar);
+
+              linha.append(
+                criarCelula(promocao.ID_PROMOCAO),
+                celulaProdutos,
+                criarCelula(desconto),
+                criarCelula(formatarData(promocao.DATA_INICIO) + " a " + formatarData(promocao.DATA_FIM)),
+                celulaSituacao,
+                celulaAcoes,
+              );
+              listaPromocoesAtivas.appendChild(linha);
+            });
+          } catch (erro) {
+            alert("Erro ao carregar as promoções: " + erro.message);
+          }
+        }
+
+        listaPromocoesAtivas.addEventListener("click", async function (evento) {
+          var botao = evento.target.closest(".btnEncerrarPromocao");
+          if (!botao) return;
+          if (!confirm("Encerrar a promoção nº " + botao.dataset.id + "? Os preços voltam ao normal.")) return;
+          try {
+            var resposta = await enviarJson("/promocao/encerrar", { id: botao.dataset.id });
+            if (!resposta.ok) throw new Error(resposta.erro);
+            alert("Promoção encerrada!");
+            carregarPromocoesAtivas();
+            buscarProximosVencimento();
+          } catch (erro) {
+            alert("Erro ao encerrar a promoção: " + erro.message);
+          }
+        });
+
+        // ──────────────────────────────────────────────
+        // DESCARTES - VENCIDOS
+        // ──────────────────────────────────────────────
+        var listaVencidos = document.querySelector("#listaVencidos");
+
+        async function carregarVencidos() {
+          try {
+            var resposta = await requisicaoJson("/descarte/vencidos");
+            listaVencidos.replaceChildren();
+            if (resposta.lotes.length == 0) {
+              linhaVazia(listaVencidos, 6, "Nenhum produto vencido no estoque.");
+            }
+            resposta.lotes.forEach(function (lote) {
+              var linha = document.createElement("tr");
+              var celulaAcoes = document.createElement("td");
+              var descartar = criarBotaoAcao("btn-danger btnSelecionarDescarte",
+                lote.ID_LOTE, "fa-solid fa-trash-can");
+              descartar.title = "Descartar este lote";
+              descartar.dataset.texto = lote.NOME_PRODUTO + " · lote " + lote.CODIGO_LOTE +
+                " (saldo " + lote.QNT_LOTE + ")";
+              descartar.dataset.saldo = lote.QNT_LOTE;
+              celulaAcoes.appendChild(descartar);
+
+              linha.append(
+                criarCelula(lote.NOME_PRODUTO),
+                criarCelula(lote.CODIGO_LOTE),
+                criarCelula(formatarData(lote.DATA_VALIDADE)),
+                criarCelula(lote.DIAS_VENCIDO + " dia(s)"),
+                criarCelula(lote.QNT_LOTE),
+                celulaAcoes,
+              );
+              listaVencidos.appendChild(linha);
+            });
+          } catch (erro) {
+            alert("Erro ao carregar os produtos vencidos: " + erro.message);
+          }
+        }
+
+        listaVencidos.addEventListener("click", function (evento) {
+          var botao = evento.target.closest(".btnSelecionarDescarte");
+          if (!botao) return;
+          document.querySelector("#descarteIdLote").value = botao.dataset.id;
+          document.querySelector("#descarteLote").value = botao.dataset.texto;
+          var quantidade = document.querySelector("#descarteQuantidade");
+          quantidade.value = botao.dataset.saldo;
+          quantidade.max = botao.dataset.saldo;
+          var motivo = document.querySelector("#descarteMotivo");
+          if (motivo.value == "") motivo.value = "Produto vencido";
+          quantidade.scrollIntoView({ behavior: "smooth" });
+        });
+
+        // ──────────────────────────────────────────────
+        // DESCARTES - REGISTRAR
+        // ──────────────────────────────────────────────
+        function limparDescarte() {
+          document.querySelector("#descarteIdLote").value = "";
+          document.querySelector("#descarteLote").value = "";
+          document.querySelector("#descarteQuantidade").value = "";
+          document.querySelector("#descarteQuantidade").removeAttribute("max");
+          document.querySelector("#descarteMotivo").value = "";
+          var data = document.querySelector("#descarteData");
+          data.value = hojeMais(0);
+          data.max = hojeMais(0);
+        }
+
+        document.querySelector("#btnLimparDescarte").addEventListener("click", limparDescarte);
+        document.querySelector("#btnRegistrarDescarte").addEventListener("click", registrarDescarte);
+
+        async function registrarDescarte() {
+          var adm = exigirAdm();
+          if (!adm) return;
+
+          var idLote = document.querySelector("#descarteIdLote").value;
+          var quantidade = document.querySelector("#descarteQuantidade").value;
+          var motivo = document.querySelector("#descarteMotivo").value.trim();
+          var data = document.querySelector("#descarteData").value;
+
+          if (idLote == "") {
+            alert("Selecione um lote na lista de produtos vencidos.");
+            return;
+          }
+          if (quantidade == "" || motivo == "" || data == "") {
+            alert("Preencha a quantidade, o motivo e a data do descarte.");
+            return;
+          }
+
+          try {
+            var resposta = await enviarJson("/descarte/cadastrar", {
+              idLote: idLote,
+              idAdm: adm.id,
+              quantidade: quantidade,
+              motivo: motivo,
+              dataDescarte: data,
+            });
+            if (!resposta.ok) {
+              throw new Error(resposta.erro || "O servidor não registrou o descarte.");
+            }
+            alert("Descarte registrado! O estoque foi atualizado.");
+            limparDescarte();
+            await carregarListas();
+          } catch (erro) {
+            alert("Erro ao registrar o descarte: " + erro.message);
+          }
+        }
+
+        // ──────────────────────────────────────────────
+        // DESCARTES - HISTORICO
+        // ──────────────────────────────────────────────
+        var listaDescartes = document.querySelector("#listaDescartes");
+        document.querySelector("#btnFiltrarDescartes").addEventListener("click", carregarDescartes);
+
+        async function carregarDescartes() {
+          var query = montarQuery({
+            dataInicio: document.querySelector("#filtroDescarteInicio").value,
+            dataFim: document.querySelector("#filtroDescarteFim").value,
+          });
+          try {
+            var resposta = await requisicaoJson("/descarte/historico" + query);
+            if (!resposta.ok) throw new Error(resposta.erro);
+            listaDescartes.replaceChildren();
+            if (resposta.descartes.length == 0) {
+              linhaVazia(listaDescartes, 6, "Nenhum descarte encontrado.");
+            }
+            resposta.descartes.forEach(function (descarte) {
+              var linha = document.createElement("tr");
+              linha.append(
+                criarCelula(formatarDataHora(descarte.DATA_DESCARTE)),
+                criarCelula(descarte.NOME_PRODUTO),
+                criarCelula(descarte.CODIGO_LOTE),
+                criarCelula(descarte.QNT_DESCARTADA),
+                criarCelula(descarte.MOTIVO_DESCARTE),
+                criarCelula(descarte.NOME_ADM),
+              );
+              listaDescartes.appendChild(linha);
+            });
+          } catch (erro) {
+            alert("Erro ao carregar o histórico de descartes: " + erro.message);
+          }
+        }
+
+        // ──────────────────────────────────────────────
+        // RELATORIOS
+        // ──────────────────────────────────────────────
+        // cada relatorio: filtros que aparecem, colunas, como montar a linha
+        // e o resumo mostrado acima da tabela
+        var relatorios = {
+          "mais-vendidos": {
+            filtros: ["categoria", "marca", "periodo"],
+            colunas: ["#", "Produto", "Categoria", "Marca", "Qtd. vendida", "Nº de pedidos"],
+            linha: function (l, i) {
+              return [i + 1, l.NOME_PRODUTO, l.NOME_CATEGORIA, l.NOME_MARCA, l.QNT_VENDIDA, l.NUM_PEDIDOS];
+            },
+            resumo: function (linhas) {
+              var total = linhas.reduce(function (s, l) { return s + Number(l.QNT_VENDIDA); }, 0);
+              return linhas.length + " produto(s) · " + total + " unidade(s) vendida(s) · pedidos cancelados não contam";
+            },
+          },
+          descartes: {
+            filtros: ["periodo"],
+            colunas: ["Produto", "Categoria", "Qtd. descartada", "Nº de descartes", "Valor perdido"],
+            linha: function (l) {
+              return [l.NOME_PRODUTO, l.NOME_CATEGORIA, l.QNT_DESCARTADA, l.NUM_DESCARTES, formatarMoeda(l.VALOR_PERDIDO)];
+            },
+            resumo: function (linhas) {
+              var perdido = linhas.reduce(function (s, l) { return s + Number(l.VALOR_PERDIDO); }, 0);
+              return linhas.length + " produto(s) · valor perdido (preço de compra): " + formatarMoeda(perdido);
+            },
+          },
+          promocoes: {
+            filtros: ["periodo"],
+            colunas: ["#", "Produto", "Categoria", "Marca", "Nº de promoções", "Última promoção"],
+            linha: function (l, i) {
+              return [i + 1, l.NOME_PRODUTO, l.NOME_CATEGORIA, l.NOME_MARCA, l.NUM_PROMOCOES, formatarData(l.ULTIMA_PROMOCAO)];
+            },
+            resumo: function (linhas) {
+              return linhas.length + " produto(s) já entraram em promoção";
+            },
+          },
+          vencimento: {
+            filtros: ["dias"],
+            colunas: ["Produto", "Categoria", "Lote", "Validade", "Vence em", "Saldo", "Em promoção"],
+            linha: function (l) {
+              return [l.NOME_PRODUTO, l.NOME_CATEGORIA, l.CODIGO_LOTE, formatarData(l.DATA_VALIDADE),
+                l.DIAS_RESTANTES == 0 ? "hoje" : l.DIAS_RESTANTES + " dia(s)", l.QNT_LOTE,
+                l.EM_PROMOCAO == 1 ? "Sim" : "Não"];
+            },
+            resumo: function (linhas) {
+              var total = linhas.reduce(function (s, l) { return s + Number(l.QNT_LOTE); }, 0);
+              return linhas.length + " lote(s) · " + total + " unidade(s) perto do vencimento";
+            },
+          },
+          compras: {
+            filtros: ["fornecedor", "periodo"],
+            colunas: ["Nº", "Data", "Fornecedor", "Itens", "Qtd. total", "Total"],
+            linha: function (l) {
+              return [l.ID_COMPRA, formatarDataHora(l.DATA_COMPRA), l.NOME_FANTASIA || l.NOME_FORNECEDOR,
+                l.ITENS.map(textoItemCompra).join(" | "), l.QNT_TOTAL, formatarMoeda(l.VALOR_TOTAL)];
+            },
+            resumo: function (linhas) {
+              var total = linhas.reduce(function (s, l) { return s + Number(l.VALOR_TOTAL); }, 0);
+              return linhas.length + " compra(s) · total gasto: " + formatarMoeda(total);
+            },
+          },
+        };
+
+        var relatorioTipo = document.querySelector("#relatorioTipo");
+
+        function mostrarFiltrosRelatorio() {
+          var filtros = relatorios[relatorioTipo.value].filtros;
+          document.querySelectorAll("[data-filtro]").forEach(function (campo) {
+            campo.style.display = filtros.includes(campo.dataset.filtro) ? "" : "none";
+          });
+          document.querySelector("#relatorioCabecalho").replaceChildren();
+          document.querySelector("#relatorioCorpo").replaceChildren();
+          document.querySelector("#relatorioResumo").textContent =
+            "Escolha os filtros e clique em Gerar.";
+        }
+
+        relatorioTipo.addEventListener("change", mostrarFiltrosRelatorio);
+        document.querySelector("#btnGerarRelatorio").addEventListener("click", gerarRelatorio);
+        mostrarFiltrosRelatorio();
+
+        async function gerarRelatorio() {
+          var tipo = relatorioTipo.value;
+          var config = relatorios[tipo];
+          var filtros = {};
+          if (config.filtros.includes("categoria")) filtros.idCategoria = document.querySelector("#relatorioCategoria").value;
+          if (config.filtros.includes("marca")) filtros.idMarca = document.querySelector("#relatorioMarca").value;
+          if (config.filtros.includes("fornecedor")) filtros.idFornecedor = document.querySelector("#relatorioFornecedor").value;
+          if (config.filtros.includes("periodo")) {
+            filtros.dataInicio = document.querySelector("#relatorioInicio").value;
+            filtros.dataFim = document.querySelector("#relatorioFim").value;
+          }
+          if (config.filtros.includes("dias")) filtros.dias = document.querySelector("#relatorioDias").value;
+
+          try {
+            var resposta = await requisicaoJson("/relatorio/" + tipo + montarQuery(filtros));
+            if (!resposta.ok) throw new Error(resposta.erro);
+
+            var cabecalho = document.createElement("tr");
+            config.colunas.forEach(function (coluna) {
+              var th = document.createElement("th");
+              th.textContent = coluna;
+              cabecalho.appendChild(th);
+            });
+            document.querySelector("#relatorioCabecalho").replaceChildren(cabecalho);
+
+            var corpo = document.querySelector("#relatorioCorpo");
+            corpo.replaceChildren();
+            if (resposta.linhas.length == 0) {
+              linhaVazia(corpo, config.colunas.length, "Nenhum dado encontrado para esses filtros.");
+            }
+            resposta.linhas.forEach(function (dado, indice) {
+              var linha = document.createElement("tr");
+              config.linha(dado, indice).forEach(function (valor) {
+                linha.appendChild(criarCelula(valor));
+              });
+              corpo.appendChild(linha);
+            });
+            document.querySelector("#relatorioResumo").textContent = config.resumo(resposta.linhas);
+          } catch (erro) {
+            alert("Erro ao gerar o relatório: " + erro.message);
+          }
+        }
+
+        // estado inicial dos formularios de estoque
+        limparCompra();
+        limparPromocao();
+        limparDescarte();
       });
