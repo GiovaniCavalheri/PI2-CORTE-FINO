@@ -1,4 +1,12 @@
 const Database = require("../database/database");
+const {
+  textoPreenchido,
+  textoOuNulo,
+  somenteDigitos,
+  idValido,
+  dataValida,
+  hoje,
+} = require("./validacao");
 
 class Cliente {
   #id;
@@ -187,31 +195,113 @@ class Cliente {
     ];
   }
 
+  //regras do cliente. Obrigatorios: nome, data de nascimento, CPF (11
+  //digitos), e-mail e celular (telefone). Opcionais: RG, telefone comercial
+  //e endereco (CEP e UF, se vierem, tem que estar completos).
+  //Monta tambem o ENDERECO_CLIENTE. Devolve o texto do erro ou null
+  validar() {
+    if (
+      !textoPreenchido(this.#nomeCliente) ||
+      !textoPreenchido(this.#dataNascimento) ||
+      !textoPreenchido(this.#cpfCliente) ||
+      !textoPreenchido(this.#emailCliente) ||
+      !textoPreenchido(this.#telefone)
+    ) {
+      return "Preencha nome, data de nascimento, CPF, e-mail e celular.";
+    }
+    if (!dataValida(this.#dataNascimento) || this.#dataNascimento > hoje()) {
+      return "Data de nascimento inválida.";
+    }
+
+    //CPF e CEP ficam no banco somente com os digitos
+    let cpf = somenteDigitos(this.#cpfCliente);
+    if (cpf.length != 11) {
+      return "O CPF precisa ter 11 dígitos.";
+    }
+    let cep = textoOuNulo(this.#cep);
+    if (cep != null) {
+      cep = somenteDigitos(cep);
+      if (cep.length != 8) {
+        return "O CEP precisa ter 8 dígitos.";
+      }
+    }
+    let uf = textoOuNulo(this.#estado);
+    if (uf != null) {
+      uf = uf.toUpperCase();
+      if (uf.length != 2) {
+        return "A UF precisa ter 2 letras.";
+      }
+    }
+
+    this.#nomeCliente = this.#nomeCliente.trim();
+    this.#cpfCliente = cpf;
+    this.#rgCliente = textoOuNulo(this.#rgCliente);
+    this.#emailCliente = this.#emailCliente.trim();
+    this.#telefone = this.#telefone.trim();
+    this.#telComercial = textoOuNulo(this.#telComercial);
+    this.#cep = cep;
+    this.#cidade = textoOuNulo(this.#cidade);
+    this.#estado = uf;
+    this.#bairro = textoOuNulo(this.#bairro);
+    this.#numero = textoOuNulo(this.#numero);
+    this.#complemento = textoOuNulo(this.#complemento);
+    if (typeof this.#senhaCliente != "string") {
+      this.#senhaCliente = null;
+    }
+
+    //ENDERECO_CLIENTE: junta as partes preenchidas ("Centro, 100, Sao Paulo, SP, 01001000")
+    let partes = [
+      this.#bairro,
+      this.#numero,
+      this.#complemento,
+      this.#cidade,
+      this.#estado,
+      this.#cep,
+    ];
+    let preenchidas = partes.filter((parte) => parte != null);
+    this.#enderecoCliente = preenchidas.length ? preenchidas.join(", ") : null;
+    return null;
+  }
+
+  //devolve { ok } ou { ok: false, erro }
   async cadastrar() {
-    let sql =
-      "insert into CLIENTE (NOME_CLIENTE, DATA_NASCIMENTO, CPF_CLIENTE, RG_CLIENTE, EMAIL_CLIENTE, ENDERECO_CLIENTE, TELEFONE, TEL_COMERCIAL, CEP, CIDADE, ESTADO, BAIRRO, NUMERO, COMPLEMENTO, SENHA_CLIENTE) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-    let valores = this.#valoresCadastro();
-
-    let banco = new Database();
-    let result = await banco.ExecutaComandoNonQuery(sql, valores);
-
-    return result;
+    let resultado = await this.cadastrarComId();
+    return resultado.ok ? { ok: true } : resultado;
   }
 
+  //cadastra e devolve o id gerado (o cadastro de socio usa esse id).
+  //Devolve { ok, id } ou { ok: false, erro }
   async cadastrarComId() {
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "insert into CLIENTE (NOME_CLIENTE, DATA_NASCIMENTO, CPF_CLIENTE, RG_CLIENTE, EMAIL_CLIENTE, ENDERECO_CLIENTE, TELEFONE, TEL_COMERCIAL, CEP, CIDADE, ESTADO, BAIRRO, NUMERO, COMPLEMENTO, SENHA_CLIENTE) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     let valores = this.#valoresCadastro();
 
     let banco = new Database();
-    return banco.ExecutaComandoLastInserted(sql, valores);
+    let id = await banco.ExecutaComandoLastInserted(sql, valores);
+    return { ok: id > 0, id: id };
   }
 
-  //exclui o cliente numa transacao, apagando junto o historico de pedidos
-  //(o controller so chama aqui se nao houver pedido em aberto)
+  //o cliente nao pode ser excluido com pedido em aberto. Exclui numa
+  //transacao, apagando junto o historico de pedidos.
+  //Devolve { ok } ou { ok: false, erro }
   async excluir(id) {
+    if (!idValido(id)) {
+      return { ok: false, erro: "Cliente inválido." };
+    }
+    if (await this.possuiPedidosEmAberto(id)) {
+      return {
+        ok: false,
+        erro: "Este cliente possui pedidos em aberto e não pode ser excluído.",
+      };
+    }
+
     let banco = new Database();
-    return await banco.ExecutaTransacao(async function (executar) {
+    let ok = await banco.ExecutaTransacao(async function (executar) {
       await executar(
         "delete from ENTREGA_PEDIDO where ID_PEDIDO in (select ID_PEDIDO from PEDIDOS where ID_CLIENTE = ?)",
         [id],
@@ -224,6 +314,22 @@ class Cliente {
       let cliente = await executar("delete from CLIENTE where ID_CLIENTE = ?", [id]);
       return cliente.affectedRows > 0;
     });
+    return { ok: ok };
+  }
+
+  //login: devolve o cliente com esse e-mail e senha, ou null
+  //(o e-mail pode se repetir: procura o que tem essa senha)
+  async autenticar(email, senha) {
+    if (!textoPreenchido(email) || typeof senha != "string" || senha == "") {
+      return null;
+    }
+    let clientes = await this.buscarPorEmail(email.trim());
+    for (let i = 0; i < clientes.length; i++) {
+      if (clientes[i].verificarSenha(senha)) {
+        return clientes[i];
+      }
+    }
+    return null;
   }
 
   //usado antes de excluir: o cliente (socio) nao pode ter pedido em aberto.
@@ -287,7 +393,16 @@ class Cliente {
     );
   }
 
+  //na alteracao a senha nao muda. Devolve { ok } ou { ok: false, erro }
   async alterar() {
+    if (!idValido(this.#id)) {
+      return { ok: false, erro: "Cliente inválido." };
+    }
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "update CLIENTE set NOME_CLIENTE = ?, DATA_NASCIMENTO = ?, CPF_CLIENTE = ?, RG_CLIENTE = ?, EMAIL_CLIENTE = ?, ENDERECO_CLIENTE = ?, TELEFONE = ?, TEL_COMERCIAL = ?, CEP = ?, CIDADE = ?, ESTADO = ?, BAIRRO = ?, NUMERO = ?, COMPLEMENTO = ? where ID_CLIENTE = ?";
     let valores = [
@@ -311,7 +426,7 @@ class Cliente {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 }
 

@@ -1,4 +1,6 @@
 const Database = require("../database/database");
+const Cliente = require("./clientesModel");
+const { idValido, dataValida } = require("./validacao");
 
 class Socio {
   #id;
@@ -33,7 +35,28 @@ class Socio {
     this.#dataVencimento = valor;
   }
 
+  //regras do socio: id do cliente, datas validas e vencimento depois da
+  //adesao. Devolve o texto do erro ou null
+  validar() {
+    if (!idValido(this.#id)) {
+      return "Sócio inválido.";
+    }
+    if (!dataValida(this.#dataAdesao) || !dataValida(this.#dataVencimento)) {
+      return "Informe as datas de adesão e de vencimento.";
+    }
+    if (this.#dataVencimento < this.#dataAdesao) {
+      return "O vencimento não pode ser antes da adesão.";
+    }
+    return null;
+  }
+
+  //devolve { ok } ou { ok: false, erro }
   async cadastrar() {
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "insert into SOCIO (ID_SOCIO, DATA_ADESAO, DATA_VENCIMENTO) values (?,?,?)";
     let valores = [this.#id, this.#dataAdesao, this.#dataVencimento];
@@ -41,16 +64,27 @@ class Socio {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
   //exclui o socio e os dados dele em CLIENTE (ID_SOCIO = ID_CLIENTE) numa transacao.
-  //o controller so chama aqui se nao houver pedido em aberto: o historico
-  //(pedidos Entregues/Cancelados, itens e entregas) e apagado junto.
-  //se algo der errado no meio, nada e apagado
+  //nao pode haver pedido em aberto: o historico (pedidos Entregues/Cancelados,
+  //itens e entregas) e apagado junto. Se algo der errado no meio, nada e apagado.
+  //Devolve { ok } ou { ok: false, erro }
   async excluir(id) {
+    if (!idValido(id)) {
+      return { ok: false, erro: "Sócio inválido." };
+    }
+    //o socio e um CLIENTE (ID_SOCIO = ID_CLIENTE): os pedidos ficam no cliente
+    if (await new Cliente().possuiPedidosEmAberto(id)) {
+      return {
+        ok: false,
+        erro: "Este sócio possui pedidos em aberto e não pode ser excluído.",
+      };
+    }
+
     let banco = new Database();
-    return await banco.ExecutaTransacao(async function (executar) {
+    let ok = await banco.ExecutaTransacao(async function (executar) {
       let socio = await executar("delete from SOCIO where ID_SOCIO = ?", [id]);
       if (socio.affectedRows == 0) {
         return false;
@@ -67,6 +101,7 @@ class Socio {
       await executar("delete from CLIENTE where ID_CLIENTE = ?", [id]);
       return true;
     });
+    return { ok: ok };
   }
 
   async listar() {
@@ -105,7 +140,13 @@ class Socio {
     return linhas;
   }
 
+  //devolve { ok } ou { ok: false, erro }
   async alterar() {
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "update SOCIO set DATA_ADESAO = ?, DATA_VENCIMENTO = ? where ID_SOCIO = ?";
     let valores = [this.#dataAdesao, this.#dataVencimento, this.#id];
@@ -113,7 +154,7 @@ class Socio {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 }
 

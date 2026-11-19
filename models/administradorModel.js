@@ -1,4 +1,5 @@
 const Database = require("../database/database");
+const { textoPreenchido, idValido } = require("./validacao");
 
 class Administrador {
   #id;
@@ -45,7 +46,34 @@ class Administrador {
     return this.#senhaAdm === senhaDigitada;
   }
 
+  //regras de nome e e-mail (cadastro e alteracao). Devolve o erro ou null
+  validarDados() {
+    if (!textoPreenchido(this.#nomeAdm)) {
+      return "Informe o nome do administrador.";
+    }
+    if (!textoPreenchido(this.#emailAdm)) {
+      return "Informe o e-mail do administrador.";
+    }
+    this.#nomeAdm = this.#nomeAdm.trim();
+    this.#emailAdm = this.#emailAdm.trim();
+    return null;
+  }
+
+  //regra da senha: obrigatoria. Devolve o erro ou null
+  validarSenha() {
+    if (!textoPreenchido(this.#senhaAdm)) {
+      return "Informe a senha.";
+    }
+    return null;
+  }
+
+  //devolve { ok } ou { ok: false, erro }
   async cadastrar() {
+    let erro = this.validarDados() || this.validarSenha();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "insert into ADMINISTRADOR (NOME_ADM, EMAIL_ADM, SENHA_ADM) values (?,?,?)";
     let valores = [this.#nomeAdm, this.#emailAdm, this.#senhaAdm];
@@ -53,17 +81,46 @@ class Administrador {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
+  //o administrador que registrou compras ou descartes nao pode ser excluido
+  //(o historico guarda quem fez). Devolve { ok } ou { ok: false, erro }
   async excluir(id) {
-    let sql = "delete from ADMINISTRADOR where ID_ADM = ?";
-    let valores = [id];
+    if (!idValido(id)) {
+      return { ok: false, erro: "Administrador inválido." };
+    }
 
     let banco = new Database();
+    let uso = await banco.ExecutaComando(
+      "select (select count(*) from COMPRA where ID_ADM = ?) + " +
+        "(select count(*) from DESCARTE where ID_ADM = ?) as total",
+      [id, id],
+    );
+    if (uso[0]["total"] > 0) {
+      return {
+        ok: false,
+        erro: "Este administrador registrou compras ou descartes e não pode ser excluído.",
+      };
+    }
+
+    let sql = "delete from ADMINISTRADOR where ID_ADM = ?";
+    let valores = [id];
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
+  }
+
+  //login: devolve o administrador se e-mail e senha conferem, ou null
+  async autenticar(email, senha) {
+    if (!textoPreenchido(email) || typeof senha != "string" || senha == "") {
+      return null;
+    }
+    let administrador = await this.buscarPorEmail(email.trim());
+    if (administrador != null && administrador.verificarSenha(senha)) {
+      return administrador;
+    }
+    return null;
   }
 
   async listar() {
@@ -105,7 +162,16 @@ class Administrador {
     );
   }
 
+  //altera nome e e-mail. Devolve { ok } ou { ok: false, erro }
   async alterar() {
+    if (!idValido(this.#id)) {
+      return { ok: false, erro: "Administrador inválido." };
+    }
+    let erro = this.validarDados();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "update ADMINISTRADOR set NOME_ADM = ?, EMAIL_ADM = ? where ID_ADM = ?";
     let valores = [this.#nomeAdm, this.#emailAdm, this.#id];
@@ -113,17 +179,26 @@ class Administrador {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
+  //altera so a senha. Devolve { ok } ou { ok: false, erro }
   async alterarSenha() {
+    if (!idValido(this.#id)) {
+      return { ok: false, erro: "Administrador inválido." };
+    }
+    let erro = this.validarSenha();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql = "update ADMINISTRADOR set SENHA_ADM = ? where ID_ADM = ?";
     let valores = [this.#senhaAdm, this.#id];
 
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 }
 

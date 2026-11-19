@@ -1,4 +1,13 @@
 const Database = require("../database/database");
+const {
+  textoPreenchido,
+  textoOuNulo,
+  somenteDigitos,
+  idValido,
+} = require("./validacao");
+
+//valores aceitos pela coluna FORMA_PAGAMENTO (enum do banco)
+const FORMAS_PAGAMENTO = ["debcred", "ted", "pix", "cheque"];
 
 class Fornecedor {
   #id;
@@ -166,7 +175,76 @@ class Fornecedor {
     this.#senhaFornecedor = valor;
   }
 
+  //regras do fornecedor. Obrigatorios: CNPJ (14 digitos), razao social,
+  //e-mail, celular e forma de pagamento. Opcionais: nome fantasia,
+  //responsavel, CPF do responsavel, telefone e endereco (CPF, CEP e UF,
+  //se vierem, tem que estar completos). Devolve o texto do erro ou null
+  validar() {
+    if (
+      !textoPreenchido(this.#cnpjFornecedor) ||
+      !textoPreenchido(this.#nomeFornecedor) ||
+      !textoPreenchido(this.#emailFornecedor) ||
+      !textoPreenchido(this.#celular)
+    ) {
+      return "Preencha CNPJ, razão social, e-mail e celular.";
+    }
+    if (!FORMAS_PAGAMENTO.includes(this.#formaPagamento)) {
+      return "Selecione a forma de pagamento.";
+    }
+
+    //CNPJ, CPF e CEP ficam no banco somente com os digitos
+    let cnpj = somenteDigitos(this.#cnpjFornecedor);
+    if (cnpj.length != 14) {
+      return "O CNPJ precisa ter 14 dígitos.";
+    }
+    let cpf = textoOuNulo(this.#cpfResponsavel);
+    if (cpf != null) {
+      cpf = somenteDigitos(cpf);
+      if (cpf.length != 11) {
+        return "O CPF do responsável precisa ter 11 dígitos.";
+      }
+    }
+    let cep = textoOuNulo(this.#cep);
+    if (cep != null) {
+      cep = somenteDigitos(cep);
+      if (cep.length != 8) {
+        return "O CEP precisa ter 8 dígitos.";
+      }
+    }
+    let uf = textoOuNulo(this.#estado);
+    if (uf != null) {
+      uf = uf.toUpperCase();
+      if (uf.length != 2) {
+        return "A UF precisa ter 2 letras.";
+      }
+    }
+
+    this.#cnpjFornecedor = cnpj;
+    this.#nomeFornecedor = this.#nomeFornecedor.trim();
+    this.#nomeFantasia = textoOuNulo(this.#nomeFantasia);
+    this.#nomeResponsavel = textoOuNulo(this.#nomeResponsavel);
+    this.#cpfResponsavel = cpf;
+    this.#emailFornecedor = this.#emailFornecedor.trim();
+    this.#telefone = textoOuNulo(this.#telefone);
+    this.#celular = this.#celular.trim();
+    this.#cep = cep;
+    this.#cidade = textoOuNulo(this.#cidade);
+    this.#estado = uf;
+    this.#bairro = textoOuNulo(this.#bairro);
+    this.#numero = textoOuNulo(this.#numero);
+    if (typeof this.#senhaFornecedor != "string") {
+      this.#senhaFornecedor = null;
+    }
+    return null;
+  }
+
+  //devolve { ok } ou { ok: false, erro }
   async cadastrar() {
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "insert into FORNECEDOR (CNPJ_FORNECEDOR, NOME_FORNECEDOR, NOME_FANTASIA, NOME_RESPONSAVEL, CPF_RESPONSAVEL, EMAIL_FORNECEDOR, TELEFONE, CELULAR, CEP, CIDADE, ESTADO, BAIRRO, NUMERO, FORMA_PAGAMENTO, SENHA_FORNECEDOR) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     let valores = [
@@ -190,17 +268,44 @@ class Fornecedor {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 
+  //o fornecedor nao pode ser excluido se tiver compras registradas.
+  //Devolve { ok } ou { ok: false, erro }
   async excluir(id) {
+    if (!idValido(id)) {
+      return { ok: false, erro: "Fornecedor inválido." };
+    }
+    if (await this.possuiCompras(id)) {
+      return {
+        ok: false,
+        erro: "Este fornecedor possui compras registradas e não pode ser excluído.",
+      };
+    }
+
     let sql = "delete from FORNECEDOR where ID_FORNECEDOR = ?";
     let valores = [id];
 
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
+  }
+
+  //login: devolve o fornecedor com esse e-mail e senha, ou null
+  //(o e-mail pode se repetir: procura o que tem essa senha)
+  async autenticar(email, senha) {
+    if (!textoPreenchido(email) || typeof senha != "string" || senha == "") {
+      return null;
+    }
+    let fornecedores = await this.buscarPorEmail(email.trim());
+    for (let i = 0; i < fornecedores.length; i++) {
+      if (fornecedores[i].verificarSenha(senha)) {
+        return fornecedores[i];
+      }
+    }
+    return null;
   }
 
   //usado antes de excluir: o fornecedor nao pode ter compras registradas
@@ -262,7 +367,16 @@ class Fornecedor {
     );
   }
 
+  //na alteracao a senha nao muda. Devolve { ok } ou { ok: false, erro }
   async alterar() {
+    if (!idValido(this.#id)) {
+      return { ok: false, erro: "Fornecedor inválido." };
+    }
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
     let sql =
       "update FORNECEDOR set CNPJ_FORNECEDOR = ?, NOME_FORNECEDOR = ?, NOME_FANTASIA = ?, NOME_RESPONSAVEL = ?, CPF_RESPONSAVEL = ?, EMAIL_FORNECEDOR = ?, TELEFONE = ?, CELULAR = ?, CEP = ?, CIDADE = ?, ESTADO = ?, BAIRRO = ?, NUMERO = ?, FORMA_PAGAMENTO = ? where ID_FORNECEDOR = ?";
     let valores = [
@@ -286,7 +400,7 @@ class Fornecedor {
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
-    return result;
+    return { ok: result };
   }
 }
 

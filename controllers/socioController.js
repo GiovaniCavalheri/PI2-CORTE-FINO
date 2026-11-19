@@ -1,22 +1,11 @@
 const Socio = require("../models/socioModel");
 
+//o controller so le a requisicao e devolve a resposta:
+//as regras de validacao ficam no model (Socio.validar)
 class SocioController {
   async cadastrar(req, res) {
-    let id = req.body.id;
-    let dataAdesao = req.body.dataAdesao;
-    let dataVencimento = req.body.dataVencimento;
-
-    if (
-      id && id > 0 &&
-      typeof dataAdesao == "string" && dataAdesao.trim() != "" &&
-      typeof dataVencimento == "string" && dataVencimento.trim() != ""
-    ) {
-      let socio = new Socio(id, dataAdesao, dataVencimento);
-      let okRetornoBanco = await socio.cadastrar();
-      res.send({ ok: okRetornoBanco });
-    } else {
-      res.send({ ok: false });
-    }
+    let socio = new Socio(req.body.id, req.body.dataAdesao, req.body.dataVencimento);
+    res.send(await socio.cadastrar());
   }
 
   async listar(req, res) {
@@ -49,21 +38,8 @@ class SocioController {
   }
 
   async alterar(req, res) {
-    let id = req.body.id;
-    let dataAdesao = req.body.dataAdesao;
-    let dataVencimento = req.body.dataVencimento;
-
-    if (
-      id && id > 0 &&
-      typeof dataAdesao == "string" && dataAdesao.trim() != "" &&
-      typeof dataVencimento == "string" && dataVencimento.trim() != ""
-    ) {
-      let socio = new Socio(id, dataAdesao, dataVencimento);
-      let okRetornoBanco = await socio.alterar();
-      res.send({ ok: okRetornoBanco });
-    } else {
-      res.send({ ok: false });
-    }
+    let socio = new Socio(req.body.id, req.body.dataAdesao, req.body.dataVencimento);
+    res.send(await socio.alterar());
   }
 }
 
