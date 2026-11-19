@@ -15,5 +15,6 @@ router.use(require("./socioRoutes"));
 router.use(require("./compraRoutes"));
 router.use(require("./descarteRoutes"));
 router.use(require("./promocaoRoutes"));
+router.use(require("./relatorioRoutes"));
 
 module.exports = router;
