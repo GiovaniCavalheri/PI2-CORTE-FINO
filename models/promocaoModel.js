@@ -299,6 +299,36 @@ class Promocao {
     return promocoes;
   }
 
+  //produtos com promocao em vigor hoje (pagina /offers do site).
+  //Se o produto estiver em mais de uma, fica a de menor preco.
+  async listarOfertas() {
+    let banco = new Database();
+    let linhas = await banco.ExecutaComando(
+      "select p.ID_PRODUTO, p.NOME_PRODUTO, p.DESCRICAO, p.PRECO_VENDA, p.QNT_ESTOQUE, " +
+        "c.NOME_CATEGORIA, m.NOME_MARCA, pr.DESCONTO_PORC, pr.DATA_FIM, " +
+        SQL_PRECO_NA_PROMOCAO +
+        " as PRECO_PROMOCIONAL " +
+        "from PROMOCAO pr " +
+        "inner join PROMOCAO_PRODUTO pp on pp.ID_PROMOCAO = pr.ID_PROMOCAO " +
+        "inner join PRODUTOS p on p.ID_PRODUTO = pp.ID_PRODUTO " +
+        "inner join CATEGORIAS_PRODUTO c on c.ID_CATEGORIA = p.ID_CATEGORIA " +
+        "inner join MARCA m on m.ID_MARCA = p.ID_MARCA " +
+        "where pr.ATIVA = 1 and curdate() between pr.DATA_INICIO and pr.DATA_FIM " +
+        "order by PRECO_PROMOCIONAL, p.NOME_PRODUTO",
+    );
+
+    //a consulta ja vem do menor preco para o maior: fica a primeira de cada produto
+    let ofertas = [];
+    let jaIncluidos = new Set();
+    for (let i = 0; i < linhas.length; i++) {
+      if (!jaIncluidos.has(linhas[i].ID_PRODUTO)) {
+        jaIncluidos.add(linhas[i].ID_PRODUTO);
+        ofertas.push(linhas[i]);
+      }
+    }
+    return ofertas;
+  }
+
   //encerra antes do fim: a promocao fica inativa e o preco volta ao normal.
   //Devolve { ok } ou { ok: false, erro }
   async encerrar(id) {

@@ -1,3 +1,5 @@
+const Promocao = require("../models/promocaoModel");
+
 class HomeController {
   indexView(req, res) {
     res.render("index");
@@ -15,8 +17,10 @@ class HomeController {
     res.render("contact");
   }
 
-  offersView(req, res) {
-    res.render("offers");
+  //ofertas = produtos com promocao em vigor (vem do banco)
+  async offersView(req, res) {
+    let ofertas = await new Promocao().listarOfertas();
+    res.render("offers", { ofertas: ofertas });
   }
 
   signaturesView(req, res) {

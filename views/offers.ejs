@@ -42,133 +42,105 @@
     <section>
 
 
-    <!-- OFERTAS -->
+    <!-- OFERTAS - produtos com promocao em vigor (vem do banco) -->
     <section class="highlights-of-the-week1 py-5">
       <div class="container">
         <h2 class="text-center fw-bold mb-2" style="color: #2e1a16">
-          Destaques da Semana
+          Ofertas da Semana
         </h2>
 
         <p class="sub-high text-center mb-5">
-          Cortes selecionados para uma experiência premium
+          Cortes selecionados com preço especial por tempo limitado
         </p>
-        <div class="row g-4 justify-space-evenly">
-          <!-- CARD 1 -->
+
+        <%
+          // imagem padrao de cada tipo (mesma regra da pagina de produtos)
+          const imagensPorTipo = {
+            bovino: "/images/Cards-Produtos/picanha-bovina-card.png",
+            suino: "/images/Cards-Produtos/panceta-products.png",
+            ave: "/images/Cards-Produtos/frango-resfriado-products.png",
+            kit: "/images/Cards-Produtos/kit-churrasco-products.png",
+          };
+          // "89.9" -> "89,90"
+          const moeda = (valor) => Number(valor).toFixed(2).replace(".", ",");
+          // "2026-11-25" -> "25/11/2026"
+          const data = (texto) => String(texto).split("-").reverse().join("/");
+        %>
+
+        <% if (ofertas.length == 0) { %>
+        <p class="text-center">
+          Nenhuma oferta no momento. Volte em breve ou confira
+          <a href="/products">todos os nossos produtos</a>.
+        </p>
+        <% } %>
+
+        <div class="row g-4 justify-content-center">
+          <% for (let i = 0; i < ofertas.length; i++) { %>
+          <%
+            const oferta = ofertas[i];
+            const tipo = String(oferta.NOME_CATEGORIA || "")
+              .normalize("NFD")
+              .replace(/[̀-ͯ]/g, "")
+              .toLowerCase()
+              .trim();
+            const chaveImagem = Object.keys(imagensPorTipo).find((chave) => tipo.startsWith(chave));
+            const selo = oferta.DESCONTO_PORC != null
+              ? "-" + Number(oferta.DESCONTO_PORC) + "%"
+              : "Preço especial";
+            const mensagem = "Olá Corte Fino, tenho interesse na oferta de " + oferta.NOME_PRODUTO + ".";
+          %>
           <div class="col-12 col-md-6 col-lg-4">
-            <div class="card-produto h-100">
-              <div class="badge-card">Mais Vendido</div>
+            <!-- card-oferta + data-*: usados pelo cart.js no "Adicionar ao Pedido" -->
+            <div
+              class="card-produto card-oferta h-100"
+              data-id="<%= oferta.ID_PRODUTO %>"
+              data-preco="<%= oferta.PRECO_PROMOCIONAL %>"
+              data-estoque="<%= oferta.QNT_ESTOQUE %>"
+            >
+              <div class="badge-card"><%= selo %></div>
 
               <img
-                src="/images/Cards-Produtos/file-mignon-card.png"
-                alt="Filé Mignon"
+                src="<%= imagensPorTipo[chaveImagem] || imagensPorTipo.bovino %>"
+                class="img-produto"
+                alt="<%= oferta.NOME_PRODUTO %>"
               />
-              <h3>Filé Mignon</h3>
-              <p>
-                Corte nobre extremamente macio, ideal para grelhar ou assar.
-              </p>
+              <h3 class="nome-produto"><%= oferta.NOME_PRODUTO %></h3>
+              <p><%= oferta.DESCRICAO %></p>
 
               <div class="info-carne">
-                <span>Angus Certificado</span>
-                <span>Ideal para churrasco</span>
-                <span>Oferta válida até sábado</span>
+                <span class="categoria-produto"><%= oferta.NOME_CATEGORIA %></span>
+                <span>Marca <%= oferta.NOME_MARCA %></span>
+                <span>Oferta válida até <%= data(oferta.DATA_FIM) %></span>
               </div>
 
               <div class="preco-card">
-                <span class="preco-antigo"> R$ 119,90/kg </span>
-
-                <span class="preco-novo"> R$ 89,90 </span>
+                <span class="preco-antigo"> R$ <%= moeda(oferta.PRECO_VENDA) %>/kg </span>
+                <span class="preco-novo"> R$ <%= moeda(oferta.PRECO_PROMOCIONAL) %> </span>
               </div>
 
+              <% if (oferta.QNT_ESTOQUE > 0) { %>
+              <button class="btn-adicionar mt-3">Adicionar ao Pedido</button>
+              <% } else { %>
+              <button class="btn-adicionar mt-3" disabled>Esgotado</button>
+              <% } %>
+
               <a
-                href="https://wa.me/5518997732006?text=Olá%20Corte%20Fino,%20tenho%20interesse%20no%Filé%Mignon."
+                href="https://wa.me/5518997732006?text=<%= encodeURIComponent(mensagem) %>"
                 target="_blank"
               >
-                <button class="button-orçamento w-100">
+                <button class="button-orçamento w-100 mt-2">
                   Pedir no WhatsApp
                 </button>
               </a>
             </div>
           </div>
-
-          <!-- CARD 2 -->
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="card-produto h-100">
-              <div class="badge-card">Escolha Recomendada</div>
-
-              <img
-                src="/images/Cards-Produtos/panceta-products.png"
-                alt="Panceta Bovina"
-              />
-              <h3>Panceta Bovina</h3>
-              <p>
-                Versátil e saborosa, perfeita para churrasco ou receitas do dia
-                a dia.
-              </p>
-
-              <div class="info-carne">
-                <span>Corte Premium Selecionado</span>
-                <span>Ideal para harmonização</span>
-                <span>Maciez excepcional</span>
-              </div>
-
-              <div class="preco-card">
-                <span class="preco-antigo"> R$ 54,90/kg </span>
-
-                <span class="preco-novo"> R$ 34,90 </span>
-              </div>
-
-              <a
-                href="https://wa.me/5518997732006?text=Olá%20Corte%20Fino,%20tenho%20interesse%20na%Peça de %Alcatra %20Prime."
-                target="_blank"
-              >
-                <button class="button-orçamento w-100">
-                  Pedir no WhatsApp
-                </button>
-              </a>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="card-produto h-100">
-              <div class="badge-card">Escolha Recomendada</div>
-
-              <img
-                src="/images/Cards-Produtos/picanha-products.png"
-                alt="Filé Mignon"
-              />
-              <h3>Picanha Premium</h3>
-              <p>
-                Corte especial com marmoreio perfeito para um churrasco
-                suculento.
-              </p>
-
-              <div class="info-carne">
-                <span>Corte Premium Selecionado</span>
-                <span>Ideal para dividir com a família</span>
-                <span>Maciez surpreendente</span>
-              </div>
-
-              <div class="preco-card">
-                <span class="preco-antigo"> R$ 109,90/kg </span>
-
-                <span class="preco-novo"> R$ 89,90 </span>
-              </div>
-
-              <a
-                href="https://wa.me/5518997732006?text=Olá%20Corte%20Fino,%20tenho%20interesse%20no%20Picanha%20Prime."
-                target="_blank"
-              >
-                <button class="button-orçamento w-100">
-                  Pedir no WhatsApp
-                </button>
-              </a>
-            </div>
-          </div>
+          <% } %>
         </div>
       </div>
     </section>
-    <!-- FOOTER -->
+<!-- FOOTER -->
     <%- include("partials/footer", { footerType: "default" }) %>
 
-    <script src="/JS/scripts/products.js" defer></script>
+    <script src="/JS/scripts/cart.js"></script>
   </body>
 </html>

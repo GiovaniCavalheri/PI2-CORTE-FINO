@@ -31,7 +31,8 @@ document.addEventListener("DOMContentLoaded", function() {
     function adicionarAoCarrinho() {
         let botao = this;
 
-        let cartao = botao.closest(".cartao-produto");
+        //cartao da pagina de produtos ou da pagina de ofertas
+        let cartao = botao.closest(".cartao-produto, .card-oferta");
 
         let idProduto = Number(cartao.dataset.id);
         let preco = Number(cartao.dataset.preco);
