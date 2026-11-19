@@ -133,12 +133,29 @@
           return botao;
         }
 
+        // validade cadastrada no produto; se nao tiver, a do lote que vence
+        // primeiro (marcada com "lote"); sem nenhuma das duas, "—"
+        function criarCelulaValidade(produto) {
+          if (produto.DATA_VALIDADE) {
+            return criarCelula(formatarData(produto.DATA_VALIDADE));
+          }
+          if (!produto.VALIDADE_LOTE) {
+            return criarCelula("—");
+          }
+          var celula = criarCelula(formatarData(produto.VALIDADE_LOTE) + " ");
+          var marca = document.createElement("span");
+          marca.className = "badge badge-cat";
+          marca.textContent = "lote";
+          celula.appendChild(marca);
+          return celula;
+        }
+
         function renderizarProdutos(produtos) {
           listaProdutos.replaceChildren();
           if (produtos.length === 0) {
             var linhaVazia = document.createElement("tr");
             var celulaVazia = document.createElement("td");
-            celulaVazia.colSpan = 6;
+            celulaVazia.colSpan = 8;
             celulaVazia.textContent = "Nenhum produto cadastrado ainda.";
             linhaVazia.appendChild(celulaVazia);
             listaProdutos.appendChild(linhaVazia);
@@ -147,11 +164,13 @@
           produtos.forEach(function (produto) {
             var linha = document.createElement("tr");
             linha.append(
+              criarCelula(produto.ID_PRODUTO),
               criarCelula(produto.NOME_PRODUTO),
               criarCelula(produto.NOME_CATEGORIA),
               criarCelula(produto.NOME_MARCA),
               criarCelula("R$ " + produto.PRECO_VENDA),
               criarCelula(produto.QNT_ESTOQUE),
+              criarCelulaValidade(produto),
             );
             var acoes = document.createElement("td");
             var editar = criarBotaoAcao(
@@ -164,6 +183,7 @@
             editar.dataset.marca = produto.ID_MARCA;
             editar.dataset.preco = produto.PRECO_VENDA;
             editar.dataset.estoque = produto.QNT_ESTOQUE;
+            editar.dataset.validade = produto.DATA_VALIDADE || "";
             editar.dataset.descricao = produto.DESCRICAO || "";
             acoes.append(
               editar,
@@ -314,6 +334,58 @@
         var btnGravar = document.querySelector("#btnGravar");
         btnGravar.addEventListener("click", gravarProduto);
 
+        // ──────────────────────────────────────────────
+        // PRODUTOS - LOTE DE ENTRADA (so no cadastro)
+        // produto que chegou precisa de lote: a quantidade do lote vira o
+        // estoque. Sem lote, o produto e cadastrado com estoque 0
+        // ──────────────────────────────────────────────
+        var temLoteProduto = document.querySelector("#temLoteProduto");
+        var loteQuantidadeProduto = document.querySelector("#loteQuantidadeProduto");
+
+        function atualizarEstoqueDoLote() {
+          if (document.querySelector("#idProduto").value != "") return;
+          document.querySelector("#estoqueProduto").value = temLoteProduto.checked
+            ? loteQuantidadeProduto.value || 0
+            : 0;
+        }
+
+        // cadastrando: mostra o lote e o estoque fica somente leitura.
+        // alterando: esconde o lote (novos lotes entram pela tela de Compras)
+        function modoFormularioProduto(cadastrando) {
+          document.querySelector("#loteEntrada").hidden = !cadastrando;
+          document.querySelector("#estoqueProduto").readOnly = cadastrando;
+          atualizarEstoqueDoLote();
+        }
+
+        temLoteProduto.addEventListener("change", function () {
+          document.querySelector("#camposLoteProduto").hidden = !temLoteProduto.checked;
+          atualizarEstoqueDoLote();
+        });
+        loteQuantidadeProduto.addEventListener("input", atualizarEstoqueDoLote);
+
+        // le o lote do formulario; null se nao marcou o lote ou se esta alterando
+        function lerLoteProduto() {
+          if (document.querySelector("#idProduto").value != "" || !temLoteProduto.checked) {
+            return null;
+          }
+          return {
+            codigoLote: document.querySelector("#loteCodigoProduto").value.trim(),
+            quantidade: loteQuantidadeProduto.value,
+            dataFabricacao: document.querySelector("#loteFabricacaoProduto").value,
+            dataValidade: document.querySelector("#loteValidadeProduto").value,
+          };
+        }
+
+        function limparLoteProduto() {
+          temLoteProduto.checked = false;
+          document.querySelector("#camposLoteProduto").hidden = true;
+          document.querySelector("#loteCodigoProduto").value = "";
+          loteQuantidadeProduto.value = "";
+          document.querySelector("#loteFabricacaoProduto").value = "";
+          document.querySelector("#loteFabricacaoProduto").max = hojeMais(0);
+          document.querySelector("#loteValidadeProduto").value = "";
+        }
+
         async function gravarProduto() {
           var id = document.querySelector("#idProduto");
           var nome = document.querySelector("#nomeProduto");
@@ -321,7 +393,18 @@
           var marca = document.querySelector("#marcaProduto");
           var preco = document.querySelector("#precoProduto");
           var estoque = document.querySelector("#estoqueProduto");
+          var validade = document.querySelector("#validadeProduto");
           var descricao = document.querySelector("#descProduto");
+          var lote = lerLoteProduto();
+
+          if (
+            lote &&
+            (lote.codigoLote == "" || lote.quantidade == "" ||
+              lote.dataFabricacao == "" || lote.dataValidade == "")
+          ) {
+            alert("Preencha todos os campos do lote de entrada!");
+            return;
+          }
 
           if (
             nome.value != "" &&
@@ -338,8 +421,11 @@
               marca: marca.value,
               preco: preco.value,
               estoque: estoque.value,
+              validade: validade.value,
               descricao: descricao.value,
             };
+            // produto que chegou: o servidor grava o produto e o lote juntos
+            if (lote) obj.lote = lote;
 
             // se tem id preenchido estamos alterando, senao cadastrando
             var url =
@@ -379,9 +465,13 @@
           document.querySelector("#marcaProduto").value = "";
           document.querySelector("#precoProduto").value = "";
           document.querySelector("#estoqueProduto").value = "";
+          document.querySelector("#validadeProduto").value = "";
           document.querySelector("#descProduto").value = "";
           document.querySelector("#tituloForm").textContent =
             "Cadastrar Produto";
+          document.querySelector("#feedbackBuscaProduto").hidden = true;
+          limparLoteProduto();
+          modoFormularioProduto(true);
         }
 
         // ──────────────────────────────────────────────
@@ -396,8 +486,12 @@
           document.querySelector("#precoProduto").value = this.dataset.preco;
           document.querySelector("#estoqueProduto").value =
             this.dataset.estoque;
+          document.querySelector("#validadeProduto").value =
+            this.dataset.validade || "";
           document.querySelector("#descProduto").value = this.dataset.descricao;
-          document.querySelector("#tituloForm").textContent = "Alterar Produto";
+          document.querySelector("#tituloForm").textContent =
+            "Alterar Produto #" + this.dataset.id;
+          modoFormularioProduto(false);
 
           document
             .querySelector("#nomeProduto")
@@ -407,7 +501,11 @@
         listaProdutos.addEventListener("click", function (evento) {
           var botaoEditar = evento.target.closest(".btnEditar");
           var botaoExcluir = evento.target.closest(".btnExcluir");
-          if (botaoEditar) editarProduto.call(botaoEditar);
+          if (botaoEditar) {
+            // a mensagem da busca por ID nao vale para o produto da tabela
+            document.querySelector("#feedbackBuscaProduto").hidden = true;
+            editarProduto.call(botaoEditar);
+          }
           if (botaoExcluir) excluirProduto.call(botaoExcluir);
         });
 
@@ -1959,6 +2057,8 @@
         }
 
         document.querySelector("#btnBuscarIdProduto").addEventListener("click", async function () {
+          var feedback = document.querySelector("#feedbackBuscaProduto");
+          feedback.hidden = true;
           var produto = await buscarPorId("produto", "#buscaIdProduto");
           if (!produto) return;
           // mesmos dados que o botao de editar da tabela usa
@@ -1970,9 +2070,16 @@
               marca: produto.ID_MARCA,
               preco: produto.PRECO_VENDA,
               estoque: produto.QNT_ESTOQUE,
+              validade: produto.DATA_VALIDADE || "",
               descricao: produto.DESCRICAO || "",
             },
           });
+          // mostra o ID encontrado (o botao Limpar esconde esta mensagem)
+          feedback.textContent =
+            "Produto encontrado: ID " + produto.ID_PRODUTO + " — " +
+            produto.NOME_PRODUTO + " (" + produto.NOME_MARCA + "). " +
+            "Os dados foram carregados no formulário para edição.";
+          feedback.hidden = false;
         });
 
         document.querySelector("#btnBuscarIdCategoria").addEventListener("click", async function () {
@@ -2008,7 +2115,8 @@
           window.location.href = "/adm";
         });
 
-        // estado inicial dos formularios de estoque
+        // estado inicial dos formularios (produto em modo cadastro)
+        limparFormulario();
         limparCompra();
         limparPromocao();
         limparDescarte();

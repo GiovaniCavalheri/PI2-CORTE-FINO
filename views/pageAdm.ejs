@@ -228,6 +228,8 @@
               <i class="fa-solid fa-magnifying-glass"></i> Buscar
             </button>
           </div>
+          <!-- feedback da busca: mostra o ID e o nome do produto encontrado -->
+          <p class="pedidos-ajuda" id="feedbackBuscaProduto" aria-live="polite" hidden></p>
         </div>
 
         <!-- FORMULARIO DE PRODUTO -->
@@ -239,8 +241,17 @@
         </div>
 
         <div class="form-card">
-          <!-- guarda o id quando estamos editando um produto -->
-          <input type="hidden" id="idProduto" value="" />
+          <div class="form-row cols-2">
+            <div>
+              <!-- preenchido quando estamos editando; vazio = cadastro novo -->
+              <label class="form-label">ID do Produto</label>
+              <input type="text" id="idProduto" value="" placeholder="Novo produto" readonly />
+            </div>
+            <div>
+              <label class="form-label">Data de validade</label>
+              <input type="date" id="validadeProduto" />
+            </div>
+          </div>
 
           <div class="form-row cols-2">
             <div>
@@ -282,6 +293,8 @@
             </div>
             <div>
               <label class="form-label">Quantidade em estoque *</label>
+              <!-- no cadastro vem do lote de entrada (somente leitura);
+                   na alteracao pode ser editada -->
               <input type="number" id="estoqueProduto" placeholder="0" />
             </div>
           </div>
@@ -295,6 +308,37 @@
                 placeholder="Descricao breve..."
               ></textarea>
             </div>
+          </div>
+
+          <!-- LOTE DE ENTRADA: so no cadastro. Produto que chegou precisa de
+               lote (gravado na tabela LOTE); a quantidade vira o estoque -->
+          <div id="loteEntrada">
+            <label class="form-label label-checkbox">
+              <input type="checkbox" id="temLoteProduto" />
+              O produto chegou — registrar lote de entrada
+            </label>
+            <div class="form-row cols-4" id="camposLoteProduto" hidden>
+              <div>
+                <label class="form-label">Código do lote *</label>
+                <input type="text" id="loteCodigoProduto" maxlength="20" placeholder="Ex: L2026-01" />
+              </div>
+              <div>
+                <label class="form-label">Quantidade *</label>
+                <input type="number" id="loteQuantidadeProduto" min="1" step="1" placeholder="0" />
+              </div>
+              <div>
+                <label class="form-label">Fabricação *</label>
+                <input type="date" id="loteFabricacaoProduto" />
+              </div>
+              <div>
+                <label class="form-label">Validade do lote *</label>
+                <input type="date" id="loteValidadeProduto" />
+              </div>
+            </div>
+            <p class="pedidos-ajuda">
+              Sem lote, o produto é cadastrado com estoque 0. Se a data de
+              validade do produto ficar vazia, vale a do lote (ou a de hoje, sem lote).
+            </p>
           </div>
 
           <div class="form-actions">
@@ -321,18 +365,20 @@
           <table>
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Produto</th>
                 <th>Categoria</th>
                 <th>Marca</th>
                 <th>Preco</th>
                 <th>Estoque</th>
+                <th>Validade</th>
                 <th class="table-actions-wide">Acoes</th>
               </tr>
             </thead>
             <tbody id="listaProdutos">
               <% if (produtos.length == 0) { %>
               <tr>
-                <td colspan="6">
+                <td colspan="8">
                   <div class="empty-state">
                     <i class="fa-solid fa-box-open"></i>
                     <p>Nenhum produto cadastrado ainda.</p>
@@ -343,11 +389,20 @@
 
               <% for (let i = 0; i < produtos.length; i++) { %>
               <tr>
+                <td><%= produtos[i].ID_PRODUTO %></td>
                 <td><%= produtos[i].NOME_PRODUTO %></td>
                 <td><%= produtos[i].NOME_CATEGORIA %></td>
                 <td><%= produtos[i].NOME_MARCA %></td>
                 <td>R$ <%= produtos[i].PRECO_VENDA %></td>
                 <td><%= produtos[i].QNT_ESTOQUE %></td>
+                <td>
+                  <% if (produtos[i].DATA_VALIDADE) { %>
+                  <%= produtos[i].DATA_VALIDADE.split("-").reverse().join("/") %>
+                  <% } else if (produtos[i].VALIDADE_LOTE) { %>
+                  <%= produtos[i].VALIDADE_LOTE.split("-").reverse().join("/") %>
+                  <span class="badge badge-cat">lote</span>
+                  <% } else { %>—<% } %>
+                </td>
                 <td>
                   <button
                     class="btn-outline btnEditar"
@@ -357,6 +412,7 @@
                     data-marca="<%= produtos[i].ID_MARCA %>"
                     data-preco="<%= produtos[i].PRECO_VENDA %>"
                     data-estoque="<%= produtos[i].QNT_ESTOQUE %>"
+                    data-validade="<%= produtos[i].DATA_VALIDADE || '' %>"
                     data-descricao="<%= produtos[i].DESCRICAO %>"
                   >
                     <i class="fa-solid fa-pen"></i>

@@ -407,10 +407,20 @@
       .form-row.cols-3 {
         grid-template-columns: 1fr 1fr 1fr;
       }
+      .form-row.cols-4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      @media (max-width: 900px) {
+        .form-row.cols-4 {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
 
       @media (max-width: 640px) {
         .form-row.cols-2,
-        .form-row.cols-3 {
+        .form-row.cols-3,
+        .form-row.cols-4 {
           grid-template-columns: 1fr;
         }
       }
@@ -979,4 +989,13 @@
   min-width: 190px;
   padding: 6px 10px;
   font-size: 13px;
+}
+
+/* checkbox "O produto chegou" do cadastro de produto */
+.label-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 12px;
 }
