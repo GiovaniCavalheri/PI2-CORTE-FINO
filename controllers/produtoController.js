@@ -13,6 +13,7 @@ function produtoDoFormulario(id, body) {
     body.descricao,
     body.preco,
     body.estoque,
+    body.validade,
   );
 }
 
@@ -49,9 +50,15 @@ class ProdutoController {
     });
   }
 
+  //com "lote" no body (produto que chegou): grava o produto e o lote juntos.
+  //Sem lote: produto ainda nao chegou (o model exige estoque 0)
   async cadastrar(req, res) {
     let produto = produtoDoFormulario(0, req.body);
-    res.send(await produto.cadastrar());
+    if (req.body.lote) {
+      res.send(await produto.cadastrarComLotes([req.body.lote]));
+    } else {
+      res.send(await produto.cadastrar());
+    }
   }
 
   async alterar(req, res) {

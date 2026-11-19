@@ -1,5 +1,5 @@
 const Database = require("../database/database");
-const { diasValidos } = require("./validacao");
+const { diasValidos, idValido, dataValida, hoje } = require("./validacao");
 
 //prazo padrao para "proximo do vencimento"
 const DIAS_PADRAO_VENCIMENTO = 7;
@@ -68,6 +68,69 @@ class Lote {
   }
   set dataFabricacao(valor) {
     this.#dataFabricacao = valor;
+  }
+
+  //regras do lote: codigo (ate 20 caracteres), quantidade inteira > 0,
+  //fabricacao ate hoje e validade nao antes da fabricacao.
+  //O produto e conferido em cadastrarNoProduto. Devolve o texto do erro ou null
+  validar() {
+    let codigo = typeof this.#codigoLote == "string" ? this.#codigoLote.trim() : "";
+    let quantidade = Number(this.#qntLote);
+
+    if (codigo == "" || codigo.length > 20) {
+      return "informe o código do lote (até 20 caracteres).";
+    }
+    if (this.#qntLote === "" || !Number.isInteger(quantidade) || quantidade <= 0) {
+      return "a quantidade tem que ser um número inteiro maior que zero.";
+    }
+    if (!dataValida(this.#dataFabricacao) || !dataValida(this.#dataValidade)) {
+      return "informe as datas de fabricação e de validade.";
+    }
+    if (this.#dataFabricacao > hoje()) {
+      return "a data de fabricação não pode estar no futuro.";
+    }
+    if (this.#dataFabricacao > this.#dataValidade) {
+      return "a validade não pode ser antes da fabricação.";
+    }
+
+    this.#codigoLote = codigo;
+    this.#qntLote = quantidade;
+    return null;
+  }
+
+  //adiciona o lote a um produto que ja existe e soma a quantidade no estoque
+  //(transacao: tudo ou nada). Devolve { ok, idLote } ou { ok: false, erro }
+  async cadastrarNoProduto() {
+    if (!idValido(this.#idProduto)) {
+      return { ok: false, erro: "Selecione o produto." };
+    }
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: "Lote: " + erro };
+    }
+
+    let lote = this;
+    let idProduto = Number(this.#idProduto);
+    let banco = new Database();
+    let idLote = await banco.ExecutaTransacao(async function (executar) {
+      let produto = await executar(
+        "update PRODUTOS set QNT_ESTOQUE = QNT_ESTOQUE + ? where ID_PRODUTO = ?",
+        [lote.qntLote, idProduto],
+      );
+      if (produto.affectedRows == 0) {
+        return null;
+      }
+      let result = await executar(
+        "insert into LOTE (ID_PRODUTO, DATA_VALIDADE, QNT_LOTE, CODIGO_LOTE, DATA_FABRICACAO) values (?,?,?,?,?)",
+        [idProduto, lote.dataValidade, lote.qntLote, lote.codigoLote, lote.dataFabricacao],
+      );
+      return result.insertId;
+    });
+
+    if (idLote == null) {
+      return { ok: false, erro: "Produto não encontrado." };
+    }
+    return { ok: true, idLote: idLote };
   }
 
   async cadastrar() {

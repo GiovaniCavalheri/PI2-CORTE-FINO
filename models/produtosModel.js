@@ -1,6 +1,13 @@
 const Database = require("../database/database");
 const Promocao = require("./promocaoModel");
-const { textoPreenchido, idValido } = require("./validacao");
+const Lote = require("./loteModel");
+const { textoPreenchido, idValido, dataValida, hoje } = require("./validacao");
+
+//validade do lote com saldo que vence primeiro (LOTE.ID_PRODUTO liga o lote
+//ao produto). Usado nas listagens junto com a DATA_VALIDADE do produto
+const SQL_VALIDADE_LOTE =
+  "(select min(l.DATA_VALIDADE) from LOTE l " +
+  "where l.ID_PRODUTO = p.ID_PRODUTO and l.QNT_LOTE > 0)";
 
 class Produtos {
   #id;
@@ -10,6 +17,7 @@ class Produtos {
   #descricaoProduto;
   #precoVenda;
   #qntEstoque;
+  #dataValidade;
 
   constructor(
     id,
@@ -19,6 +27,7 @@ class Produtos {
     descricaoProduto,
     precoVenda,
     qntEstoque,
+    dataValidade,
   ) {
     this.#id = id;
     this.#idCategoria = idCategoria;
@@ -27,6 +36,7 @@ class Produtos {
     this.#descricaoProduto = descricaoProduto;
     this.#precoVenda = precoVenda;
     this.#qntEstoque = qntEstoque;
+    this.#dataValidade = dataValidade;
   }
 
   get id() {
@@ -78,8 +88,16 @@ class Produtos {
     this.#qntEstoque = valor;
   }
 
+  get dataValidade() {
+    return this.#dataValidade;
+  }
+  set dataValidade(valor) {
+    this.#dataValidade = valor;
+  }
+
   //regras do produto: nome, categoria e marca obrigatorios, preco >= 0,
-  //estoque inteiro >= 0, descricao opcional. Devolve o texto do erro ou null
+  //estoque inteiro >= 0, descricao e validade opcionais.
+  //Devolve o texto do erro ou null
   validar() {
     if (!textoPreenchido(this.#nomeProduto)) {
       return "Informe o nome do produto.";
@@ -101,6 +119,14 @@ class Produtos {
     if (this.#descricaoProduto != null && typeof this.#descricaoProduto != "string") {
       return "Descrição inválida.";
     }
+    //validade nao informada (null, undefined ou vazia) vira a data de hoje
+    //(new Date() no formato "AAAA-MM-DD", o mesmo que a coluna DATE usa)
+    if (this.#dataValidade == null || this.#dataValidade === "") {
+      this.#dataValidade = hoje();
+    }
+    if (!dataValida(this.#dataValidade)) {
+      return "Data de validade inválida.";
+    }
 
     this.#nomeProduto = this.#nomeProduto.trim();
     this.#idCategoria = Number(this.#idCategoria);
@@ -111,15 +137,23 @@ class Produtos {
     return null;
   }
 
-  //devolve { ok } ou { ok: false, erro }
+  //cadastro sem lote: o produto ainda nao chegou, entao o estoque tem que
+  //ser 0 (produto que chegou entra por cadastrarComLotes, que cria o lote).
+  //Devolve { ok } ou { ok: false, erro }
   async cadastrar() {
     let erro = this.validar();
     if (erro != null) {
       return { ok: false, erro: erro };
     }
+    if (this.#qntEstoque > 0) {
+      return {
+        ok: false,
+        erro: "Produto com estoque precisa de um lote: informe o lote de entrada.",
+      };
+    }
 
     let sql =
-      "insert into PRODUTOS (ID_CATEGORIA, ID_MARCA, NOME_PRODUTO, DESCRICAO, PRECO_VENDA, QNT_ESTOQUE) values (?,?,?,?,?,?)";
+      "insert into PRODUTOS (ID_CATEGORIA, ID_MARCA, NOME_PRODUTO, DESCRICAO, PRECO_VENDA, QNT_ESTOQUE, DATA_VALIDADE) values (?,?,?,?,?,?,?)";
     let valores = [
       this.#idCategoria,
       this.#idMarca,
@@ -127,12 +161,95 @@ class Produtos {
       this.#descricaoProduto,
       this.#precoVenda,
       this.#qntEstoque,
+      this.#dataValidade,
     ];
 
     let banco = new Database();
     let result = await banco.ExecutaComandoNonQuery(sql, valores);
 
     return { ok: result };
+  }
+
+  //cadastro de produto que chegou (tela do administrador e area do
+  //fornecedor): grava o produto e os lotes numa transacao (tudo ou nada).
+  //O estoque e a soma dos lotes. Se a validade do produto nao foi informada,
+  //usa a do lote que vence primeiro.
+  //lotes: [{ codigoLote, quantidade, dataFabricacao, dataValidade }]
+  //Devolve { ok, idProduto } ou { ok: false, erro }
+  async cadastrarComLotes(lotes) {
+    if (!Array.isArray(lotes) || lotes.length == 0) {
+      return { ok: false, erro: "Adicione pelo menos um lote ao produto." };
+    }
+
+    let listaLotes = [];
+    for (let i = 0; i < lotes.length; i++) {
+      let item = lotes[i] || {};
+      let lote = new Lote(
+        0,
+        0,
+        item.dataValidade,
+        item.quantidade,
+        item.codigoLote,
+        item.dataFabricacao,
+      );
+      let erro = lote.validar();
+      if (erro != null) {
+        return { ok: false, erro: "Lote " + (i + 1) + ": " + erro };
+      }
+      listaLotes.push(lote);
+    }
+
+    this.#qntEstoque = listaLotes.reduce((soma, lote) => soma + lote.qntLote, 0);
+    if (this.#dataValidade == null || this.#dataValidade === "") {
+      this.#dataValidade = listaLotes
+        .map((lote) => lote.dataValidade)
+        .sort()[0];
+    }
+
+    let erro = this.validar();
+    if (erro != null) {
+      return { ok: false, erro: erro };
+    }
+
+    let produto = this;
+    let banco = new Database();
+    try {
+      let idProduto = await banco.ExecutaTransacao(async function (executar) {
+        let result = await executar(
+          "insert into PRODUTOS (ID_CATEGORIA, ID_MARCA, NOME_PRODUTO, DESCRICAO, PRECO_VENDA, QNT_ESTOQUE, DATA_VALIDADE) values (?,?,?,?,?,?,?)",
+          [
+            produto.idCategoria,
+            produto.idMarca,
+            produto.nomeProduto,
+            produto.descricaoProduto,
+            produto.precoVenda,
+            produto.qntEstoque,
+            produto.dataValidade,
+          ],
+        );
+        for (let i = 0; i < listaLotes.length; i++) {
+          let lote = listaLotes[i];
+          await executar(
+            "insert into LOTE (ID_PRODUTO, DATA_VALIDADE, QNT_LOTE, CODIGO_LOTE, DATA_FABRICACAO) values (?,?,?,?,?)",
+            [
+              result.insertId,
+              lote.dataValidade,
+              lote.qntLote,
+              lote.codigoLote,
+              lote.dataFabricacao,
+            ],
+          );
+        }
+        return result.insertId;
+      });
+      return { ok: true, idProduto: idProduto };
+    } catch (erro) {
+      //chave estrangeira: categoria ou marca nao existe
+      if (erro.code == "ER_NO_REFERENCED_ROW_2") {
+        return { ok: false, erro: "Categoria ou marca não encontrada." };
+      }
+      throw erro;
+    }
   }
 
   //o produto nao pode ser excluido se estiver em pedido, lote ou promocao.
@@ -210,6 +327,7 @@ class Produtos {
         linha["DESCRICAO"],
         linha["PRECO_VENDA"],
         linha["QNT_ESTOQUE"],
+        linha["DATA_VALIDADE"],
       );
 
       lista.push(produto);
@@ -228,7 +346,7 @@ class Produtos {
     }
 
     let sql =
-      "update PRODUTOS set ID_CATEGORIA = ?, ID_MARCA = ?, NOME_PRODUTO = ?, DESCRICAO = ?, PRECO_VENDA = ?, QNT_ESTOQUE = ? where ID_PRODUTO = ?";
+      "update PRODUTOS set ID_CATEGORIA = ?, ID_MARCA = ?, NOME_PRODUTO = ?, DESCRICAO = ?, PRECO_VENDA = ?, QNT_ESTOQUE = ?, DATA_VALIDADE = ? where ID_PRODUTO = ?";
     let valores = [
       this.#idCategoria,
       this.#idMarca,
@@ -236,6 +354,7 @@ class Produtos {
       this.#descricaoProduto,
       this.#precoVenda,
       this.#qntEstoque,
+      this.#dataValidade,
       this.#id,
     ];
 
@@ -247,9 +366,14 @@ class Produtos {
 
   //listagem com JOIN para trazer o nome da categoria e da marca.
   //PRECO_ATUAL = preco com a promocao em vigor (ou o preco de venda)
+  //DATA_VALIDADE = validade cadastrada no produto
+  //VALIDADE_LOTE = validade do lote com saldo que vence primeiro (ou null)
   async listarDetalhado() {
     let sql =
       "select p.ID_PRODUTO, p.NOME_PRODUTO, p.DESCRICAO, p.PRECO_VENDA, p.QNT_ESTOQUE, " +
+      "p.DATA_VALIDADE, " +
+      SQL_VALIDADE_LOTE +
+      " as VALIDADE_LOTE, " +
       "p.ID_CATEGORIA, p.ID_MARCA, c.NOME_CATEGORIA, m.NOME_MARCA, " +
       Promocao.SQL_PRECO_ATUAL +
       " as PRECO_ATUAL " +
@@ -272,6 +396,9 @@ class Produtos {
 
     let sql =
       "select p.ID_PRODUTO, p.NOME_PRODUTO, p.DESCRICAO, p.PRECO_VENDA, p.QNT_ESTOQUE, " +
+      "p.DATA_VALIDADE, " +
+      SQL_VALIDADE_LOTE +
+      " as VALIDADE_LOTE, " +
       "p.ID_CATEGORIA, p.ID_MARCA, c.NOME_CATEGORIA, m.NOME_MARCA " +
       "from PRODUTOS p " +
       "inner join CATEGORIAS_PRODUTO c on p.ID_CATEGORIA = c.ID_CATEGORIA " +
