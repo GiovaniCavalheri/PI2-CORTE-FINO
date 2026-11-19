@@ -52,18 +52,21 @@ router.post("/pedido/status", pedido.alterarStatus);
 router.get("/products", produto.produtosView);
 router.get("/pageAdm", produto.painelView);
 router.get("/produto/listar", produto.listar);
+router.get("/produto/buscar/:id", produto.buscar);
 router.post("/produto/cadastrar", produto.cadastrar);
 router.post("/produto/alterar", produto.alterar);
 router.delete("/produto/excluir/:id", produto.excluir);
 
 //categorias
 router.get("/categoria/listar", categoria.listar);
+router.get("/categoria/buscar/:id", categoria.buscar);
 router.post("/categoria/cadastrar", categoria.cadastrar);
 router.post("/categoria/alterar", categoria.alterar);
 router.delete("/categoria/excluir/:id", categoria.excluir);
 
 //marcas
 router.get("/marca/listar", marca.listar);
+router.get("/marca/buscar/:id", marca.buscar);
 router.post("/marca/cadastrar", marca.cadastrar);
 router.post("/marca/alterar", marca.alterar);
 router.delete("/marca/excluir/:id", marca.excluir);

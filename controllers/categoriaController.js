@@ -16,6 +16,29 @@ class CategoriaController {
     res.send(lista);
   }
 
+  async buscar(req, res) {
+    let id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.send({ ok: false, erro: "ID inválido." });
+      return;
+    }
+
+    let categoria = await new CategoriasProduto().buscarPorId(id);
+    if (categoria == null) {
+      res.send({ ok: false, erro: "Categoria não encontrada." });
+    } else {
+      //campos privados nao aparecem no JSON: monta o objeto pelos getters
+      res.send({
+        ok: true,
+        categoria: {
+          id: categoria.id,
+          nomeCategoria: categoria.nomeCategoria,
+          descricao: categoria.descricao,
+        },
+      });
+    }
+  }
+
   async cadastrar(req, res) {
     let nome = req.body.nome;
     let descricao = req.body.descricao;

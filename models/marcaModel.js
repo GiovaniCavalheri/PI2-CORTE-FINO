@@ -79,6 +79,20 @@ class Marca {
 
     return result;
   }
+
+  async buscarPorId(id) {
+    let sql = "SELECT * FROM MARCA WHERE ID_MARCA = ?";
+    let valores = [id];
+
+    let banco = new Database();
+    let linhas = await banco.ExecutaComando(sql, valores);
+
+    if (linhas.length == 0) {
+      return null;
+    } else {
+      return new Marca(linhas[0]["ID_MARCA"], linhas[0]["NOME_MARCA"]);
+    }
+  }
 }
 
 module.exports = Marca;
