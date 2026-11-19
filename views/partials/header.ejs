@@ -61,7 +61,10 @@
             Carrinho <span class="contador-carrinho" id="contadorCarrinho" hidden>0</span>
           </a>
         </li>
-        <li class="nav-item d-flex align-items-center" id="menuUsuario" hidden>
+        <!-- sem "d-flex" aqui: o display:flex !important do Bootstrap venceria
+             o atributo hidden e o "Sair" apareceria sem login. O d-flex so e
+             colocado pelo script abaixo quando existe usuario logado -->
+        <li class="nav-item align-items-center" id="menuUsuario" hidden>
           <span class="nav-link destaque-vermelho usuario-logado" id="nomeUsuario">
             <i class="fa-solid fa-user"></i> <span id="primeiroNome"></span>
           </span>
@@ -92,12 +95,17 @@
   window.atualizarContadorCarrinho();
 
   //mostra o nome do usuario logado (guardado no login pelo join.js)
-  let usuarioSalvo = localStorage.getItem("usuario_corte_fino");
-  if (usuarioSalvo != null) {
-    let usuario = JSON.parse(usuarioSalvo);
+  let usuario = null;
+  try {
+    usuario = JSON.parse(localStorage.getItem("usuario_corte_fino"));
+  } catch (e) {}
+
+  if (usuario && usuario.nome) {
     document.querySelector("#primeiroNome").textContent = usuario.nome.split(" ")[0];
     document.querySelector("#nomeUsuario").title = usuario.nome;
-    document.querySelector("#menuUsuario").hidden = false;
+    let menuUsuario = document.querySelector("#menuUsuario");
+    menuUsuario.hidden = false;
+    menuUsuario.classList.add("d-flex");
     document.querySelector("#menuEntrar").hidden = true;
   }
 
