@@ -7,6 +7,6 @@ let login = new LoginController();
 //login (temporario, sem sessao)
 router.post("/login", login.login);
 router.post("/administrador/login", login.loginAdministrador);
-//router.get("/logout", login.logout);
+router.post("/logout", login.logout);
 
 module.exports = router;

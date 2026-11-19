@@ -332,6 +332,23 @@ class Fornecedor {
     return lista;
   }
 
+  //devolve o fornecedor, ou null se o id for invalido ou nao existir
+  //(usado para conferir o fornecedor logado na area do fornecedor)
+  async buscarPorId(id) {
+    if (!idValido(id)) {
+      return null;
+    }
+    let sql = "select * from FORNECEDOR where ID_FORNECEDOR = ?";
+
+    let banco = new Database();
+    let linhas = await banco.ExecutaComando(sql, [id]);
+
+    if (linhas.length == 0) {
+      return null;
+    }
+    return Fornecedor.#deLinha(linhas[0]);
+  }
+
   //usado no login: o e-mail nao e unico em FORNECEDOR, por isso devolve uma lista
   async buscarPorEmail(email) {
     let sql = "select * from FORNECEDOR where EMAIL_FORNECEDOR = ?";

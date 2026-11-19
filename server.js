@@ -1,4 +1,5 @@
 const express = require("express");
+const cookieParser = require("cookie-parser");
 const router = require("./routes/routes");
 
 const server = express();
@@ -9,6 +10,8 @@ server.use(express.static("public"));
 
 server.use(express.urlencoded({ extended: true }));
 server.use(express.json());
+//chave que assina o cookie do fornecedor logado (troque em producao)
+server.use(cookieParser(process.env.COOKIE_SECRET || "corte-fino-chave-dev"));
 server.use(router);
 
 server.listen(PORT, () => {
