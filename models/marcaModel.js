@@ -80,14 +80,14 @@ class Marca {
     return result;
   }
 
-  async buscarPorId() {
+  async buscarPorId(id) {
     let sql = "SELECT * FROM MARCA WHERE ID_MARCA = ?";
     let valores = [id];
 
     let banco = new Database();
-    let result = await banco.ExecutaComando(sql, valores);
+    let linhas = await banco.ExecutaComando(sql, valores);
 
-    if (result.length == 0) {
+    if (linhas.length == 0) {
       return null;
     } else {
       return new Marca(linhas[0]["ID_MARCA"], linhas[0]["NOME_MARCA"]);

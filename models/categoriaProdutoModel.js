@@ -95,16 +95,20 @@ class CategoriasProduto {
     return result;
   }
 
-  async buscarPorID(id) {
+  async buscarPorId(id) {
     let sql = "SELECT * FROM CATEGORIAS_PRODUTO WHERE ID_CATEGORIA = ?";
     let valores = [id];
 
     let banco = new Database();
-    let result = banco.ExecutaComando(sql, valores);
-    if (result.length == 0) {
+    let linhas = await banco.ExecutaComando(sql, valores);
+    if (linhas.length == 0) {
       return null;
     } else {
-      return result[0];
+      return new CategoriasProduto(
+        linhas[0]["ID_CATEGORIA"],
+        linhas[0]["NOME_CATEGORIA"],
+        linhas[0]["DESCRICAO"],
+      );
     }
   }
 }

@@ -15,6 +15,25 @@ class MarcaController {
     res.send(lista);
   }
 
+  async buscar(req, res) {
+    let id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.send({ ok: false, erro: "ID inválido." });
+      return;
+    }
+
+    let marca = await new Marca().buscarPorId(id);
+    if (marca == null) {
+      res.send({ ok: false, erro: "Marca não encontrada." });
+    } else {
+      //campos privados nao aparecem no JSON: monta o objeto pelos getters
+      res.send({
+        ok: true,
+        marca: { id: marca.id, nomeMarca: marca.nomeMarca },
+      });
+    }
+  }
+
   async cadastrar(req, res) {
     let nome = req.body.nome;
 

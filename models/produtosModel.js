@@ -106,7 +106,8 @@ class Produtos {
 
   //usados antes de excluir: o produto nao pode estar em pedido, lote ou promocao
   async possuiPedidos(id) {
-    let sql = "select count(*) as total from ITENS_PEDIDOS where ID_PRODUTO = ?";
+    let sql =
+      "select count(*) as total from ITENS_PEDIDOS where ID_PRODUTO = ?";
     let valores = [id];
 
     let banco = new Database();
@@ -192,6 +193,25 @@ class Produtos {
     let linhas = await banco.ExecutaComando(sql);
 
     return linhas;
+  }
+
+  async buscarPorId(id) {
+    let sql =
+      "select p.ID_PRODUTO, p.NOME_PRODUTO, p.DESCRICAO, p.PRECO_VENDA, p.QNT_ESTOQUE, " +
+      "p.ID_CATEGORIA, p.ID_MARCA, c.NOME_CATEGORIA, m.NOME_MARCA " +
+      "from PRODUTOS p " +
+      "inner join CATEGORIAS_PRODUTO c on p.ID_CATEGORIA = c.ID_CATEGORIA " +
+      "inner join MARCA m on p.ID_MARCA = m.ID_MARCA " +
+      "where p.ID_PRODUTO = ?";
+    let valores = [id];
+
+    let banco = new Database();
+    let linhas = await banco.ExecutaComando(sql, valores);
+
+    if (linhas.length == 0) {
+      return null;
+    }
+    return linhas[0];
   }
 }
 

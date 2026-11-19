@@ -55,6 +55,22 @@ class ProdutoController {
     res.send(produtos);
   }
 
+  async buscar(req, res) {
+    let id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.send({ ok: false, erro: "ID inválido." });
+      return;
+    }
+
+    //o model ja devolve um objeto comum (linha do banco com o JOIN)
+    let produto = await new Produtos().buscarPorId(id);
+    if (produto == null) {
+      res.send({ ok: false, erro: "Produto não encontrado." });
+    } else {
+      res.send({ ok: true, produto: produto });
+    }
+  }
+
   async produtosView(req, res) {
     let produtos = await new Produtos().listarDetalhado();
     res.render("products", { produtos: produtos });
