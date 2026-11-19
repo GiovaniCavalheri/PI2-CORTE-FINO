@@ -1,5 +1,6 @@
 const Database = require("../database/database");
 const Promocao = require("./promocaoModel");
+const { idValido } = require("./validacao");
 
 //status inicial: o pagamento e feito na entrega
 const STATUS_INICIAL = "Aguardando Separação";
@@ -15,6 +16,49 @@ function tipoDaCategoria(nomeCategoria) {
   if (nome.startsWith("suin")) return "Suino";
   if (nome.startsWith("ave")) return "Ave";
   return "Kit";
+}
+
+//valores aceitos pela coluna STATUS_PEDIDO (enum do banco)
+const STATUS_PEDIDO = [
+  "Aguardando Separação",
+  "Em Andamento",
+  "Aguardando Pagamento",
+  "Aguardando Retirada",
+  "Em Rota de Entrega",
+  "Entregue",
+  "Cancelado",
+];
+
+//regras dos itens do carrinho: cada item com produto e quantidade inteira
+//maior que zero; o mesmo produto repetido vira um item so (soma).
+//Devolve { itens, totalItens } ou { erro }
+function validarItens(itens) {
+  if (!Array.isArray(itens) || itens.length == 0) {
+    return { erro: "O carrinho está vazio." };
+  }
+
+  let lista = [];
+  let totalItens = 0;
+  for (let i = 0; i < itens.length; i++) {
+    let item = itens[i];
+    if (item == null || !idValido(item.idProduto)) {
+      return { erro: "Item inválido no carrinho." };
+    }
+    let idProduto = Number(item.idProduto);
+    let quantidade = Number(item.quantidade);
+    if (!Number.isInteger(quantidade) || quantidade <= 0) {
+      return { erro: "Item inválido no carrinho." };
+    }
+
+    let itemExistente = lista.find((existente) => existente.idProduto == idProduto);
+    if (itemExistente != null) {
+      itemExistente.quantidade += quantidade;
+    } else {
+      lista.push({ idProduto: idProduto, quantidade: quantidade });
+    }
+    totalItens += quantidade;
+  }
+  return { itens: lista, totalItens: totalItens };
 }
 
 function erroEstoque(idProduto) {
@@ -106,10 +150,42 @@ class Pedidos {
     return result;
   }
 
-  //finaliza o pedido do carrinho numa transacao (tudo ou nada):
-  //confere e baixa o estoque, grava PEDIDOS e ITENS_PEDIDOS.
-  //itens: [{ idProduto, quantidade }] (sem produto repetido)
+  //finaliza o pedido do carrinho: confere o cliente e os itens e grava.
+  //itens: [{ idProduto, quantidade }] como vieram do carrinho.
+  //Devolve { ok, idPedido, valor, totalItens } ou { ok: false, erro }
+  //(precisaLogin: true quando falta o cliente; idProduto quando falta estoque)
   async finalizar(idCliente, itens) {
+    if (!idValido(idCliente)) {
+      return {
+        ok: false,
+        precisaLogin: true,
+        erro: "Entre com sua conta de sócio para finalizar o pedido.",
+      };
+    }
+    let validacao = validarItens(itens);
+    if (validacao.erro) {
+      return { ok: false, erro: validacao.erro };
+    }
+
+    let resultado = await this.#gravar(Number(idCliente), validacao.itens);
+    if (!resultado.ok) {
+      return {
+        ok: false,
+        idProduto: resultado.idProduto,
+        erro: "Estoque insuficiente para um dos produtos.",
+      };
+    }
+    return {
+      ok: true,
+      idPedido: resultado.idPedido,
+      valor: resultado.valor,
+      totalItens: validacao.totalItens,
+    };
+  }
+
+  //grava o pedido numa transacao (tudo ou nada): confere e baixa o estoque,
+  //grava PEDIDOS e ITENS_PEDIDOS. itens ja validados e sem produto repetido
+  async #gravar(idCliente, itens) {
     let banco = new Database();
     try {
       return await banco.ExecutaTransacao(async (executar) => {
@@ -140,6 +216,10 @@ class Pedidos {
         let tipo = tipos.size === 1 ? [...tipos][0] : "Kit";
         let valor = centavos / 100;
 
+        //de qual lote saiu cada quantidade: gravado em ITENS_PEDIDO_LOTE para
+        //o cancelamento devolver ao lote certo
+        let baixasLote = [];
+
         for (let item of itens) {
           await executar(
             "update PRODUTOS set QNT_ESTOQUE = QNT_ESTOQUE - ? where ID_PRODUTO = ?",
@@ -163,6 +243,11 @@ class Pedidos {
               "update LOTE set QNT_LOTE = QNT_LOTE - ? where ID_LOTE = ?",
               [baixa, lote.ID_LOTE],
             );
+            baixasLote.push({
+              idProduto: item.idProduto,
+              idLote: lote.ID_LOTE,
+              quantidade: baixa,
+            });
             restante -= baixa;
           }
         }
@@ -175,6 +260,13 @@ class Pedidos {
           await executar(
             "insert into ITENS_PEDIDOS (ID_PRODUTO, ID_PEDIDO, QNT_PEDIDO) values (?,?,?)",
             [item.idProduto, pedido.insertId, item.quantidade],
+          );
+        }
+        //depois dos itens (a tabela de lotes aponta para ITENS_PEDIDOS)
+        for (let baixa of baixasLote) {
+          await executar(
+            "insert into ITENS_PEDIDO_LOTE (ID_PEDIDO, ID_PRODUTO, ID_LOTE, QNT) values (?,?,?,?)",
+            [pedido.insertId, baixa.idProduto, baixa.idLote, baixa.quantidade],
           );
         }
 
@@ -210,8 +302,13 @@ class Pedidos {
 
   //muda o status do pedido (tela de Pedidos do admin), numa transacao.
   //pedido Entregue ou Cancelado esta encerrado e nao muda mais.
-  //Cancelado devolve as quantidades dos itens ao estoque.
+  //Cancelado devolve as quantidades dos itens ao estoque do produto e
+  //a cada lote de onde saiu (ITENS_PEDIDO_LOTE).
   async alterarStatus(id, novoStatus) {
+    if (!idValido(id) || !STATUS_PEDIDO.includes(novoStatus)) {
+      return { ok: false, erro: "Status inválido." };
+    }
+
     let banco = new Database();
     return await banco.ExecutaTransacao(async function (executar) {
       let pedidos = await executar(
@@ -239,6 +336,19 @@ class Pedidos {
           await executar(
             "update PRODUTOS set QNT_ESTOQUE = QNT_ESTOQUE + ? where ID_PRODUTO = ?",
             [itens[i]["QNT_PEDIDO"], itens[i]["ID_PRODUTO"]],
+          );
+        }
+
+        //devolve a cada lote exatamente o que saiu dele. Pedidos antigos
+        //(de antes desse controle) nao tem linhas aqui: voltam so ao produto
+        let lotes = await executar(
+          "select ID_LOTE, QNT from ITENS_PEDIDO_LOTE where ID_PEDIDO = ?",
+          [id],
+        );
+        for (let i = 0; i < lotes.length; i++) {
+          await executar(
+            "update LOTE set QNT_LOTE = QNT_LOTE + ? where ID_LOTE = ?",
+            [lotes[i]["QNT"], lotes[i]["ID_LOTE"]],
           );
         }
       }
