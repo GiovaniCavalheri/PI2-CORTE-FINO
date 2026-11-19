@@ -11,6 +11,7 @@ router.use(require("./marcaRoutes"));
 router.use(require("./usuarioRoutes"));
 router.use(require("./administradorRoutes"));
 router.use(require("./fornecedorRoutes"));
+router.use("/area-fornecedor", require("./areaFornecedorRoutes"));
 router.use(require("./socioRoutes"));
 router.use(require("./compraRoutes"));
 router.use(require("./descarteRoutes"));

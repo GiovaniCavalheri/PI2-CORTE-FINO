@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Corte Fino - Área do Fornecedor</title>
+
+    <!-- BOOTSTRAP CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- FAVICON -->
+    <link rel="shortcut icon" href="/images/icon-Corte-Fino.ico" />
+
+    <!-- ICONES -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+
+    <!-- FONTE -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="/CSS/style.css" />
+  </head>
+  <body>
+    <%- include("partials/header", { currentPage: "fornecedor" }) %>
+
+    <main class="area-fornecedor">
+      <!-- CABECALHO -->
+      <section class="hero-section d-flex align-items-center">
+        <div class="container">
+          <h4 class="border-premium">Área do Fornecedor</h4>
+          <h2 class="h1 mb-3 text-white fw-bold">Cadastro de Produtos</h2>
+          <p class="sub-hero col-12 col-md-7">
+            Olá, <%= fornecedor.nome %>. Cadastre seus produtos com os lotes
+            entregues ou adicione novos lotes a produtos já cadastrados.
+          </p>
+        </div>
+      </section>
+
+      <div class="container py-5">
+        <!-- mensagens de sucesso/erro das acoes da pagina -->
+        <div id="feedback" class="alert d-none" role="status" aria-live="polite"></div>
+
+        <!-- ═══════ CADASTRAR PRODUTO COM LOTES ═══════ -->
+        <section class="card-fornecedor">
+          <h3 class="titulo-card-fornecedor">
+            <i class="fa-solid fa-box-open"></i> Novo produto
+          </h3>
+
+          <form id="formProduto" novalidate>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="nomeProduto" class="form-label">Nome do produto *</label>
+                <input type="text" id="nomeProduto" class="form-control" maxlength="100"
+                  placeholder="Ex: Picanha Premium" required />
+              </div>
+              <div class="col-md-3">
+                <label for="categoriaProduto" class="form-label">Categoria *</label>
+                <select id="categoriaProduto" class="form-select" required>
+                  <option value="">Selecione...</option>
+                  <% for (let i = 0; i < categorias.length; i++) { %>
+                  <option value="<%= categorias[i].id %>"><%= categorias[i].nomeCategoria %></option>
+                  <% } %>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="marcaProduto" class="form-label">Marca *</label>
+                <select id="marcaProduto" class="form-select" required>
+                  <option value="">Selecione...</option>
+                  <% for (let i = 0; i < marcas.length; i++) { %>
+                  <option value="<%= marcas[i].id %>"><%= marcas[i].nomeMarca %></option>
+                  <% } %>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="precoProduto" class="form-label">Preço de venda (R$/kg) *</label>
+                <input type="number" id="precoProduto" class="form-control" min="0" step="0.01"
+                  placeholder="0.00" required />
+              </div>
+              <div class="col-md-9">
+                <label for="descProduto" class="form-label">Descrição</label>
+                <input type="text" id="descProduto" class="form-control" maxlength="255"
+                  placeholder="Descrição breve..." />
+              </div>
+            </div>
+
+            <h4 class="subtitulo-card-fornecedor">Lotes *</h4>
+            <p class="ajuda-fornecedor">
+              O estoque do produto é a soma das quantidades dos lotes, e a validade
+              do produto é a do lote que vence primeiro.
+            </p>
+
+            <div class="table-responsive">
+              <table class="table align-middle tabela-fornecedor">
+                <thead>
+                  <tr>
+                    <th>Código do lote *</th>
+                    <th>Quantidade *</th>
+                    <th>Fabricação *</th>
+                    <th>Validade *</th>
+                    <th class="text-end"><span class="visually-hidden">Remover</span></th>
+                  </tr>
+                </thead>
+                <tbody id="lotesProduto"></tbody>
+              </table>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 justify-content-between">
+              <button type="button" class="btn btn-outline-secondary" id="btnAdicionarLote">
+                <i class="fa-solid fa-plus"></i> Adicionar lote
+              </button>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary" id="btnLimparProduto">Limpar</button>
+                <button type="submit" class="btn btn-login" id="btnCadastrarProduto">
+                  <i class="fa-solid fa-floppy-disk"></i> Cadastrar produto
+                </button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <!-- ═══════ NOVO LOTE PARA PRODUTO JA CADASTRADO ═══════ -->
+        <section class="card-fornecedor">
+          <h3 class="titulo-card-fornecedor">
+            <i class="fa-solid fa-layer-group"></i> Novo lote para produto já cadastrado
+          </h3>
+
+          <form id="formLote" novalidate>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label for="loteProduto" class="form-label">Produto *</label>
+                <select id="loteProduto" class="form-select" required>
+                  <option value="">Selecione...</option>
+                  <% for (let i = 0; i < produtos.length; i++) { %>
+                  <option value="<%= produtos[i].ID_PRODUTO %>">
+                    #<%= produtos[i].ID_PRODUTO %> — <%= produtos[i].NOME_PRODUTO %> (<%= produtos[i].NOME_MARCA %>)
+                  </option>
+                  <% } %>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label for="loteCodigo" class="form-label">Código *</label>
+                <input type="text" id="loteCodigo" class="form-control" maxlength="20" required />
+              </div>
+              <div class="col-md-2">
+                <label for="loteQuantidade" class="form-label">Quantidade *</label>
+                <input type="number" id="loteQuantidade" class="form-control" min="1" step="1" required />
+              </div>
+              <div class="col-md-2">
+                <label for="loteFabricacao" class="form-label">Fabricação *</label>
+                <input type="date" id="loteFabricacao" class="form-control campo-fabricacao" required />
+              </div>
+              <div class="col-md-2">
+                <label for="loteValidade" class="form-label">Validade *</label>
+                <input type="date" id="loteValidade" class="form-control" required />
+              </div>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+              <button type="submit" class="btn btn-login" id="btnCadastrarLote">
+                <i class="fa-solid fa-plus"></i> Adicionar lote
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- ═══════ PRODUTOS CADASTRADOS ═══════ -->
+        <section class="card-fornecedor">
+          <h3 class="titulo-card-fornecedor">
+            <i class="fa-solid fa-list-ul"></i> Produtos cadastrados
+          </h3>
+          <div class="table-responsive">
+            <table class="table align-middle tabela-fornecedor">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Produto</th>
+                  <th>Categoria</th>
+                  <th>Marca</th>
+                  <th>Preço</th>
+                  <th>Estoque</th>
+                  <th>Validade</th>
+                </tr>
+              </thead>
+              <!-- preenchida pelo fornecedorProdutos.js (e atualizada a cada cadastro) -->
+              <tbody id="listaProdutos">
+                <tr><td colspan="7">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <%- include("partials/footer", { footerType: "default" }) %>
+    <script src="/JS/scripts/fornecedorProdutos.js" defer></script>
+  </body>
+</html>

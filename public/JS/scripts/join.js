@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
           //CorpoResposta.tipo diz de qual tabela veio o login: "socio" ou "fornecedor"
           alert("Bem-vindo, " + CorpoResposta.nome + "!");
-          window.location.href = paginaDeDestino();
+          window.location.href = paginaDeDestino(CorpoResposta.tipo);
         } else {
           alert("E-mail ou senha inválidos.");
         }
@@ -68,8 +68,9 @@ document.querySelectorAll(".icone-olho").forEach(function (olho) {
   });
 });
 
-  //?voltar=/cart: volta para a pagina de onde veio
-  function paginaDeDestino() {
+  //?voltar=/cart: volta para a pagina de onde veio.
+  //Sem "voltar", o fornecedor vai para a area dele e o socio para o inicio
+  function paginaDeDestino(tipo) {
     let parametros = new URLSearchParams(window.location.search);
     let voltar = parametros.get("voltar");
 
@@ -82,6 +83,6 @@ document.querySelectorAll(".icone-olho").forEach(function (olho) {
     ) {
       return voltar;
     }
-    return "/";
+    return tipo === "fornecedor" ? "/area-fornecedor/produtos" : "/";
   }
 });

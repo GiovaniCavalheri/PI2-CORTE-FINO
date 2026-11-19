@@ -1525,3 +1525,54 @@
 
   box-shadow: 0 15px 35px rgba(122, 29, 29, 0.25);
 }
+
+/* ── AREA DO FORNECEDOR (views/fornecedorProdutos.ejs) ── */
+.area-fornecedor {
+  background: var(--cor-primaria);
+}
+
+.card-fornecedor {
+  background: var(--cor-background);
+  border: 1px solid var(--cor-bege-borda);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(46, 26, 22, 0.06);
+}
+
+.titulo-card-fornecedor {
+  color: var(--cor-vermelho);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.subtitulo-card-fornecedor {
+  color: var(--cor-texto-escuro);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 24px 0 4px;
+}
+
+.ajuda-fornecedor {
+  color: var(--cor-texto-medio);
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+}
+
+.tabela-fornecedor th {
+  color: var(--cor-texto-medio);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tabela-fornecedor .form-control {
+  min-width: 130px;
+}
+
+@media (max-width: 576px) {
+  .card-fornecedor {
+    padding: 16px;
+  }
+}

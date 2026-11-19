@@ -61,6 +61,11 @@
             Carrinho <span class="contador-carrinho" id="contadorCarrinho" hidden>0</span>
           </a>
         </li>
+        <!-- so aparece para quem entrou como fornecedor (o servidor tambem
+             confere o login nas rotas /area-fornecedor) -->
+        <li class="nav-item" id="menuFornecedor" hidden>
+          <a href="/area-fornecedor/produtos" class="nav-link <%= currentPage === 'fornecedor' ? 'active' : '' %>">Área do Fornecedor</a>
+        </li>
         <!-- sem "d-flex" aqui: o display:flex !important do Bootstrap venceria
              o atributo hidden e o "Sair" apareceria sem login. O d-flex so e
              colocado pelo script abaixo quando existe usuario logado -->
@@ -107,6 +112,9 @@
     menuUsuario.hidden = false;
     menuUsuario.classList.add("d-flex");
     document.querySelector("#menuEntrar").hidden = true;
+    if (usuario.tipo === "fornecedor") {
+      document.querySelector("#menuFornecedor").hidden = false;
+    }
   }
 
   document.querySelector("#btnSair").addEventListener("click", sair);
@@ -114,7 +122,12 @@
   function sair(e) {
     e.preventDefault();
     localStorage.removeItem("usuario_corte_fino");
-    window.location.href = "/";
+    //apaga o cookie do fornecedor no servidor (mesmo se falhar, sai do site)
+    fetch("/logout", { method: "POST" })
+      .catch(function () {})
+      .finally(function () {
+        window.location.href = "/";
+      });
   }
 
 
