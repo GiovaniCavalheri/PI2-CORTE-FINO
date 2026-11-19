@@ -108,6 +108,13 @@
             >Online</span
           >
           <div class="avatar">CF</div>
+          <!-- so aparece quando o admin fez login em /adm (pageAdm.js) -->
+          <span id="menuAdm" hidden>
+            <span class="topbar-badge" id="nomeAdm"></span>
+            <button type="button" class="btn-outline" id="btnSairAdm">
+              <i class="fa-solid fa-right-from-bracket"></i> Sair
+            </button>
+          </span>
         </div>
       </div>
 
@@ -208,6 +215,21 @@
 
       <!-- ═══════ PRODUTOS ═══════ -->
       <div class="page-content" id="section-produtos">
+        <!-- BUSCAR POR ID: carrega o produto no formulario para editar -->
+        <div class="form-card">
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Buscar produto por ID</label>
+              <input type="number" min="1" id="buscaIdProduto" placeholder="Ex: 2" />
+            </div>
+          </div>
+          <div class="form-actions-compact">
+            <button class="btn-outline" id="btnBuscarIdProduto">
+              <i class="fa-solid fa-magnifying-glass"></i> Buscar
+            </button>
+          </div>
+        </div>
+
         <!-- FORMULARIO DE PRODUTO -->
         <div class="section-header">
           <div class="section-title">
@@ -362,6 +384,20 @@
         </div>
 
         <div class="form-card">
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Buscar categoria por ID</label>
+              <input type="number" min="1" id="buscaIdCategoria" placeholder="Ex: 1" />
+            </div>
+          </div>
+          <div class="form-actions-compact">
+            <button class="btn-outline" id="btnBuscarIdCategoria">
+              <i class="fa-solid fa-magnifying-glass"></i> Buscar
+            </button>
+          </div>
+        </div>
+
+        <div class="form-card">
           <input type="hidden" id="idCategoria" value="" />
           <div class="form-row cols-2">
             <div>
@@ -433,6 +469,20 @@
         <div class="section-header section-header-separated">
           <div class="section-title">
             <i class="fa-solid fa-copyright"></i> Marcas
+          </div>
+        </div>
+
+        <div class="form-card">
+          <div class="form-row cols-3">
+            <div>
+              <label class="form-label">Buscar marca por ID</label>
+              <input type="number" min="1" id="buscaIdMarca" placeholder="Ex: 1" />
+            </div>
+          </div>
+          <div class="form-actions-compact">
+            <button class="btn-outline" id="btnBuscarIdMarca">
+              <i class="fa-solid fa-magnifying-glass"></i> Buscar
+            </button>
           </div>
         </div>
 

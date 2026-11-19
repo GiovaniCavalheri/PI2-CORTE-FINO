@@ -352,7 +352,7 @@
                 headers: { "Content-Type": "application/json" },
               });
               if (!corpoResposta.ok) {
-                throw new Error("O servidor não gravou o produto.");
+                throw new Error(corpoResposta.erro || "O servidor não gravou o produto.");
               }
               alert("Produto gravado com sucesso!");
               limparFormulario();
@@ -466,7 +466,7 @@
               },
             );
             if (!corpoResposta.ok) {
-              throw new Error("O servidor não gravou a categoria.");
+              throw new Error(corpoResposta.erro || "O servidor não gravou a categoria.");
             }
             limparFormularioCategoria();
             await carregarListas();
@@ -553,7 +553,7 @@
               },
             );
             if (!corpoResposta.ok) {
-              throw new Error("O servidor não gravou a marca.");
+              throw new Error(corpoResposta.erro || "O servidor não gravou a marca.");
             }
             limparFormularioMarca();
             await carregarListas();
@@ -736,13 +736,13 @@
                 dataVencimento: dados.dataVencimento,
               });
               if (!alterouCliente.ok || !alterouSocio.ok) {
-                throw new Error("Confira CPF, CEP, UF e as datas informadas.");
+                throw new Error(alterouCliente.erro || alterouSocio.erro || "Confira CPF, CEP, UF e as datas informadas.");
               }
             } else {
               dados.senhaCliente = senha;
               var cliente = await enviarJson("/usuario/cadastrar", dados);
               if (!cliente.ok) {
-                throw new Error("Confira CPF, CEP, UF e as datas informadas.");
+                throw new Error(cliente.erro || "Confira CPF, CEP, UF e as datas informadas.");
               }
               var socio = await enviarJson("/socio/cadastrar", {
                 id: cliente.id,
@@ -756,7 +756,7 @@
                 await requisicaoJson("/usuario/excluir/" + cliente.id, {
                   method: "DELETE",
                 }).catch(function () {});
-                throw new Error("Não foi possível gravar as datas do sócio.");
+                throw new Error(socio.erro || "Não foi possível gravar as datas do sócio.");
               }
             }
             alert("Sócio gravado com sucesso!");
@@ -941,7 +941,7 @@
               resultado = await enviarJson("/fornecedor/cadastrar", dados);
             }
             if (!resultado.ok) {
-              throw new Error("Confira CNPJ, CPF, CEP e UF informados.");
+              throw new Error(resultado.erro || "Confira CNPJ, CPF, CEP e UF informados.");
             }
             alert("Fornecedor gravado com sucesso!");
             limparFormularioFornecedor();
@@ -1935,6 +1935,78 @@
             alert("Erro ao gerar o relatório: " + erro.message);
           }
         }
+
+        // ──────────────────────────────────────────────
+        // BUSCAR POR ID (produto, categoria e marca)
+        // carrega o registro no formulario, pronto para editar
+        // ──────────────────────────────────────────────
+        async function buscarPorId(entidade, campoId) {
+          var id = document.querySelector(campoId).value.trim();
+          if (id == "") {
+            alert("Informe o ID.");
+            return null;
+          }
+          try {
+            var resposta = await requisicaoJson(
+              "/" + entidade + "/buscar/" + encodeURIComponent(id),
+            );
+            if (!resposta.ok) throw new Error(resposta.erro);
+            return resposta[entidade];
+          } catch (erro) {
+            alert(erro.message);
+            return null;
+          }
+        }
+
+        document.querySelector("#btnBuscarIdProduto").addEventListener("click", async function () {
+          var produto = await buscarPorId("produto", "#buscaIdProduto");
+          if (!produto) return;
+          // mesmos dados que o botao de editar da tabela usa
+          editarProduto.call({
+            dataset: {
+              id: produto.ID_PRODUTO,
+              nome: produto.NOME_PRODUTO,
+              categoria: produto.ID_CATEGORIA,
+              marca: produto.ID_MARCA,
+              preco: produto.PRECO_VENDA,
+              estoque: produto.QNT_ESTOQUE,
+              descricao: produto.DESCRICAO || "",
+            },
+          });
+        });
+
+        document.querySelector("#btnBuscarIdCategoria").addEventListener("click", async function () {
+          var categoria = await buscarPorId("categoria", "#buscaIdCategoria");
+          if (!categoria) return;
+          editarCategoria({
+            dataset: {
+              id: categoria.id,
+              nome: categoria.nomeCategoria,
+              descricao: categoria.descricao || "",
+            },
+          });
+        });
+
+        document.querySelector("#btnBuscarIdMarca").addEventListener("click", async function () {
+          var marca = await buscarPorId("marca", "#buscaIdMarca");
+          if (!marca) return;
+          editarMarca({ dataset: { id: marca.id, nome: marca.nomeMarca } });
+        });
+
+        // ──────────────────────────────────────────────
+        // ADMIN LOGADO: nome e botao Sair (escondidos sem login)
+        // ──────────────────────────────────────────────
+        var admAtual = admLogado();
+        if (admAtual) {
+          document.querySelector("#nomeAdm").textContent = admAtual.nome;
+          document.querySelector("#menuAdm").hidden = false;
+        }
+        document.querySelector("#btnSairAdm").addEventListener("click", function () {
+          try {
+            localStorage.removeItem("adm_corte_fino");
+          } catch (erro) {}
+          window.location.href = "/adm";
+        });
 
         // estado inicial dos formularios de estoque
         limparCompra();
